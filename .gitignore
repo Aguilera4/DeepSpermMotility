@@ -5,3 +5,7 @@ venv/
 .env
 sort/
 *.pt
+VISEM-Tracking/
+data/
+datasets/
+data.zip
