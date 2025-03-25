@@ -4,7 +4,7 @@ __pycache__/
 venv/
 .env
 sort/
-*.pt
+YOLO_model/
 VISEM-Tracking/
 data/
 datasets/
