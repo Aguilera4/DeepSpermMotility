@@ -120,7 +120,7 @@ def calculate_centroid_velocity(name_video):
 
     print("Velocity data saved to sperm_tracking_with_velocity")
     
-def show_video_tracking(name_video):
+def show_video_tracking(video_path,name_video):
     # Load the tracking data with velocity
     df = pd.read_csv('../results/video_predicted/centroid_velocity/centroid_velocity_' + name_video + '.csv')
     
@@ -222,7 +222,7 @@ def classify_video(video_path,name_video):
     
     traking_video(video_path,name_video)
     calculate_centroid_velocity(name_video)
-    show_video_tracking(name_video)
+    #show_video_tracking(video_path,name_video)
     calculate_features(name_video)
     
 

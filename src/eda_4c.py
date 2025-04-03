@@ -31,11 +31,70 @@ def draw_correlation_matix(df):
     plt.title("Correlation Matrix", fontsize=16)
     plt.show()
 
+def draw_null_count(df):
+    # Get the number of null values in each column
+    null_counts = df.isnull().sum()
+
+    # Create a bar plot using Seaborn
+    plt.figure(figsize=(8, 6))
+    sns.barplot(x=null_counts.index, y=null_counts.values)
+    
+    # Rotate x-axis labels
+    plt.xticks(rotation=45)
+
+    # Add labels and title
+    plt.title('Number of Null Values in Each Column')
+    plt.xlabel('Columns')
+    plt.ylabel('Number of Null Values')
+
+    # Display the plot
+    plt.show()
+    
+    
+def draw_distribucion_columns(df):
+    # Distribution of numerical features
+    df.hist(bins=20, figsize=(12, 10))
+    plt.show()
+    
+    
+def show_outliers(df):
+   # Select only numeric columns
+    numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns
+
+    # Calculate the number of rows and columns for the subplot grid
+    num_cols = 3  # You can set this to a number you prefer
+    num_rows = int(np.ceil(len(numeric_cols) / num_cols))
+
+    # Set up the matplotlib figure
+    plt.figure(figsize=(num_cols * 5, num_rows * 5))
+
+    # Iterate over each numeric column to plot a boxplot
+    for idx, column in enumerate(numeric_cols):
+        plt.subplot(num_rows, num_cols, idx + 1)  # Dynamically position in grid
+        sns.boxplot(data=df, x=column)
+        plt.title(f'Boxplot for {column}')
+
+    # Adjust space between subplots
+    plt.subplots_adjust(hspace=1, wspace=1)  # Increase these values for more space
+
+    plt.tight_layout()
+    plt.show()
+
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('results/data_features_labeling/dataset_4c_extended.csv')
+    df = pd.read_csv('../results/data_features_labeling_preprocessing/dataset_4c_extended_preprocessing.csv')
     
+    # Delete sperm id
     df = df.drop(columns=['sperm_id'])
     
+    # Basic information
+    print(df.head())
+    print(df.info())
+    print(df.describe())
+    
+    # Advanced information
     draw_class_distribution(df)
     draw_correlation_matix(df)
+    draw_null_count(df)
+    draw_distribucion_columns(df)
+    show_outliers(df)
