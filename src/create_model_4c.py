@@ -7,7 +7,7 @@ import pandas as pd
 from calculate_features import *
 from joblib import dump
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_curve, auc
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.ensemble import RandomForestClassifier
 import tensorflow as tf
 from tensorflow import keras
@@ -16,10 +16,10 @@ import numpy as np
 import os
 import warnings
 from tensorflow.keras.callbacks import EarlyStopping
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 from imblearn.over_sampling import SMOTE
+import xgboost as xgb
 
-os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 matplotlib.use("TkAgg")  # Use Tkinter-based backend
 warnings.filterwarnings("ignore")
 
@@ -73,11 +73,28 @@ def show_metrics(y_test,y_pred):
     print(classification_report(y_test, y_pred))
     
     
+def show_learning_curve(results):
+    # Plot learning curves
+    epochs = len(results['validation_0']['mlogloss'])
+    x_axis = range(epochs)
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(x_axis, results['validation_0']['mlogloss'], label='Train')
+    plt.plot(x_axis, results['validation_1']['mlogloss'], label='Test')
+    plt.xlabel('Epochs')
+    plt.ylabel('Log Loss')
+    plt.title('XGBoost Learning Curve')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+
+############################## MODELS ##############################
 
 def random_forest(df):
     # Features and labels
-    X = df.drop(["Label","sperm_id"], axis=1).values
-    y = df["Label"]
+    X = df.drop(["label","sperm_id"], axis=1).values
+    y = df["label"]
 
     # Split data into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
@@ -96,21 +113,21 @@ def random_forest(df):
     draw_confusion_matrix(y_test,y_pred)
     #draw_roc_auc_curve(y_test,y_pred_proba)
     
-    dump(model, "models/random_forest_4c.joblib")
+    dump(model, "../models/random_forest_4c.joblib")
     
     
     
 def simple_NN(df):
-    x_data = df.drop(columns=['Label']).values.astype(np.float32)
-    y_data = keras.utils.to_categorical(df['Label'].values, 4)  # One-hot encoding for 4 classes
+    x_data = df.drop(columns=['label','sperm_id']).values.astype(np.float32)
+    y_data = keras.utils.to_categorical(df['label'].values, 4)  # One-hot encoding for 4 classes
     
     #smote = SMOTE(sampling_strategy='auto', random_state=42)
     #x_resampled, y_resampled = smote.fit_resample(x_data, y_data)
 
-    x_train, x_test, y_train, y_test = train_test_split(x_data, y_data, test_size=0.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(x_data, y_data, test_size=0.3, random_state=42)
     
     model = keras.Sequential([
-        layers.InputLayer(input_shape=(x_train.shape[1],)),  # Input layer for the features
+        layers.InputLayer(input_shape=(X_train.shape[1],)),  # Input layer for the features
         layers.Dense(128, activation='relu'),  # First hidden layer with 128 neurons
         layers.Dropout(0.2),  # Dropout for regularization to prevent overfitting
         layers.Dense(64, activation='relu'),  # Second hidden layer with 64 neurons
@@ -124,9 +141,8 @@ def simple_NN(df):
     
     early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
   
-
     # Train the model normally
-    model.fit(x_train, y_train, epochs=20, batch_size=32, validation_data=(x_test, y_test), callbacks=[early_stopping])
+    model.fit(X_train, y_train, epochs=20, batch_size=32, validation_data=(X_test, y_test), callbacks=[early_stopping])
     
     '''
     model.layers[0].trainable = True  
@@ -139,11 +155,76 @@ def simple_NN(df):
     # Continue training with fine-tuning for 5 more epochs
     model.fit(x_train, y_train, epochs=5, batch_size=32, validation_data=(x_test, y_test))
     '''
+
+    # Predict
+    y_pred = model.predict(X_test)
+    
+    # Show metrics
+    show_learning_curve(model.evals_result())
+    
+    cv_scores = cross_val_score(model, X, y, cv=5, scoring='accuracy')
+    print("Cross-validation scores:", cv_scores)
+    print("Mean accuracy:", cv_scores.mean())
+    
+    dump(model, "../models/simple_NN_4c.joblib")    
+    
+
+def XGBoost(df):
+    label_encoder =  LabelEncoder()
+    df['label'] = label_encoder.fit_transform(df['label'])
+    
+    # Features and labels
+    X = df.drop(["label","sperm_id"], axis=1).values
+    y = df["label"]
+    
+    # Train-test split
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    
+    eval_set = [(X_train, y_train), (X_test, y_test)]
+    
+    # Calculate the class weights
+    #class_weights = len(y_train) / (len(label_encoder.classes_) * y_train.value_counts())
+
+    # Apply SMOTE to balance training set
+    smote = SMOTE(random_state=42)
+    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+
+    # Initialize XGBoost classifier
+    model = xgb.XGBClassifier(
+        #scale_pos_weight=class_weights,
+        objective="multi:softmax",
+        num_class=label_encoder.classes_.shape[0],
+        eval_metric="mlogloss",
+        use_label_encoder=False,
+        n_estimators=100,
+        max_depth=5,
+        learning_rate=0.1,
+        random_state=42
+    )
+
+    # Train the model
+    model.fit(X_train_resampled, y_train_resampled, eval_set=eval_set, verbose=False)
+
+    # Predict
+    y_pred = model.predict(X_test)
+
+    # Show metrics
+    show_metrics(y_test,y_pred)
+    draw_confusion_matrix(y_test,y_pred)
+    show_learning_curve(model.evals_result())
+    
+    cv_scores = cross_val_score(model, X, y, cv=5, scoring='accuracy')
+    print("Cross-validation scores:", cv_scores)
+    print("Mean accuracy:", cv_scores.mean())
+    
+    dump(model, "../models/XGBoost_4c.joblib")    
+    
     
 
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features_labeling_preprocessing/dataset_4c_extended_preprocessing.csv')
+    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_4c_extended_preprocessing.csv')
     
     #random_forest(df)
-    simple_NN(df)
+    XGBoost(df)
+    #simple_NN(df)

@@ -34,7 +34,7 @@ def deleted_null_values(df):
     
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features_labeling/dataset_4c_extended.csv')
+    df = pd.read_csv('../results/data_features_labelling/dataset_4c_extended.csv')
     
     df_cleaned = deleted_null_values(df)
     df_scaler = scaler(df_cleaned)
@@ -42,7 +42,7 @@ if __name__ == "__main__":
     print(df)
     
     
-    df = pd.DataFrame(df_scaler, columns=['sperm_id','Velocity','Straightness_Ratio','Angular_Displacement','Linearity','Curvature','ALH','BCF','Total_Distance','Displacement','Time_Elapsed','Label'])
+    df = pd.DataFrame(df_scaler, columns=['sperm_id','total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','linearity','wob','straightness','bcf','angular_displacement','curvature','label'])
     
     # Save the updated DataFrame with velocity data
-    df.to_csv('../results/data_features_labeling_preprocessing/dataset_4c_extended_preprocessing.csv', index=False)
+    df.to_csv('../results/data_features_labelling_preprocessing/dataset_4c_extended_preprocessing.csv', index=False)
