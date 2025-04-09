@@ -9,4 +9,5 @@ VISEM-Tracking/
 data/
 datasets/
 data.zip
-results/data_sperm_tracking/sperm_tracking_extended_data.csv
+results/
+models/

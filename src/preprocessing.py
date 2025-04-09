@@ -9,8 +9,9 @@ from sklearn.preprocessing import MinMaxScaler
 
 def scaler(df):
     scaler = MinMaxScaler()
-    df_scaled = scaler.fit_transform(df.select_dtypes(include=['float64', 'int64']))
-    return df_scaled
+    columns=['total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','linearity','wob','straightness','bcf','angular_displacement','curvature']
+    df[columns] = scaler.fit_transform(df[columns].select_dtypes(include=['float64', 'int64']))
+    return df
     
     
 def deleted_null_values(df):
@@ -38,9 +39,6 @@ if __name__ == "__main__":
     
     df_cleaned = deleted_null_values(df)
     df_scaler = scaler(df_cleaned)
-    
-    print(df)
-    
     
     df = pd.DataFrame(df_scaler, columns=['sperm_id','total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','linearity','wob','straightness','bcf','angular_displacement','curvature','label'])
     

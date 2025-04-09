@@ -19,6 +19,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from imblearn.over_sampling import SMOTE
 import xgboost as xgb
+from imblearn.under_sampling import RandomUnderSampler
 
 matplotlib.use("TkAgg")  # Use Tkinter-based backend
 warnings.filterwarnings("ignore")
@@ -77,6 +78,16 @@ def show_learning_curve(results):
     # Plot learning curves
     epochs = len(results['validation_0']['mlogloss'])
     x_axis = range(epochs)
+    
+    plt.figure(figsize=(10, 6))
+    plt.plot(x_axis, results['validation_0']['auc'], label='Train')
+    plt.plot(x_axis, results['validation_1']['auc'], label='Test')
+    plt.xlabel('Epochs')
+    plt.ylabel('auc')
+    plt.title('XGBoost Learning Curve')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
     plt.figure(figsize=(10, 6))
     plt.plot(x_axis, results['validation_0']['mlogloss'], label='Train')
@@ -87,6 +98,36 @@ def show_learning_curve(results):
     plt.legend()
     plt.grid(True)
     plt.show()
+    
+    
+    plt.figure(figsize=(10, 6))
+    plt.plot(x_axis, results['validation_0']['merror'], label='Train')
+    plt.plot(x_axis, results['validation_1']['merror'], label='Test')
+    plt.xlabel('Epochs')
+    plt.ylabel('merror')
+    plt.title('XGBoost Learning Curve')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+def plot_learning_curve_NN(history):
+    plt.plot(history.history['accuracy'], label='Train Acc')
+    plt.plot(history.history['val_accuracy'], label='Val Acc')
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.legend()
+    plt.title('Training vs Validation Accuracy')
+    plt.show()
+    
+    
+    plt.plot(history.history['loss'], label='Train Loss')
+    plt.plot(history.history['val_loss'], label='Val Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.title('Training vs Validation Loss')
+    plt.show()
+    
 
 
 ############################## MODELS ##############################
@@ -117,14 +158,15 @@ def random_forest(df):
     
     
     
-def simple_NN(df):
-    x_data = df.drop(columns=['label','sperm_id']).values.astype(np.float32)
-    y_data = keras.utils.to_categorical(df['label'].values, 4)  # One-hot encoding for 4 classes
     
-    #smote = SMOTE(sampling_strategy='auto', random_state=42)
-    #x_resampled, y_resampled = smote.fit_resample(x_data, y_data)
+def simple_NN(df):    
+    X = df.drop(columns=['label','sperm_id']).values.astype(np.float32)
+    y = keras.utils.to_categorical(df['label'].values, 4)  # One-hot encoding for 4 classes
+    
+    '''smote = SMOTE(sampling_strategy='auto', random_state=42)
+    x_resampled, y_resampled = smote.fit_resample(X, y)'''
 
-    X_train, X_test, y_train, y_test = train_test_split(x_data, y_data, test_size=0.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     
     model = keras.Sequential([
         layers.InputLayer(input_shape=(X_train.shape[1],)),  # Input layer for the features
@@ -140,33 +182,33 @@ def simple_NN(df):
     model.compile(optimizer=optimizers.Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
     
     early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+    
   
     # Train the model normally
-    model.fit(X_train, y_train, epochs=20, batch_size=32, validation_data=(X_test, y_test), callbacks=[early_stopping])
+    history = model.fit(X_train, y_train, epochs=5, batch_size=32, validation_data=(X_test, y_test), callbacks=[early_stopping])
     
     '''
-    model.layers[0].trainable = True  
-    
+    model.layers[0].trainable = True      
     model.layers[1].trainable = True  
 
     # Compile the model with a lower learning rate for fine-tuning
     model.compile(optimizer=optimizers.Adam(learning_rate=0.0001), loss='categorical_crossentropy', metrics=['accuracy'])
 
     # Continue training with fine-tuning for 5 more epochs
-    model.fit(x_train, y_train, epochs=5, batch_size=32, validation_data=(x_test, y_test))
+    history = model.fit(X_train, y_train, epochs=5, batch_size=32, validation_data=(X_test, y_test))
     '''
 
     # Predict
-    y_pred = model.predict(X_test)
+    loss, accuracy = model.evaluate(X_test, y_test)
+    print(f"Test Loss: {loss:.4f}")
+    print(f"Test Accuracy: {accuracy:.4f}")
     
-    # Show metrics
-    show_learning_curve(model.evals_result())
+    plot_learning_curve_NN(history)
     
-    cv_scores = cross_val_score(model, X, y, cv=5, scoring='accuracy')
-    print("Cross-validation scores:", cv_scores)
-    print("Mean accuracy:", cv_scores.mean())
+    y_pred = (model.predict(X_test) > 0.5).astype("int32")
+    print(classification_report(y_test, y_pred))
     
-    dump(model, "../models/simple_NN_4c.joblib")    
+    dump(model, "../models/simple_NN_4c_extended.joblib")    
     
 
 def XGBoost(df):
@@ -174,27 +216,37 @@ def XGBoost(df):
     df['label'] = label_encoder.fit_transform(df['label'])
     
     # Features and labels
-    X = df.drop(["label","sperm_id"], axis=1).values
+    X = df.drop(["label","sperm_id"], axis=1).values.astype(np.float32)
     y = df["label"]
     
     # Train-test split
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     
+    
     eval_set = [(X_train, y_train), (X_test, y_test)]
     
     # Calculate the class weights
-    #class_weights = len(y_train) / (len(label_encoder.classes_) * y_train.value_counts())
+    class_weights = len(y_train) / (len(label_encoder.classes_) * y_train.value_counts())
+    
+       
+    '''
+    # Apply RandomUnderSampler to balance
+    rus = RandomUnderSampler(random_state=42)
+    X_train_resampled, y_train_resampled = rus.fit_resample(X_train, y_train)
 
-    # Apply SMOTE to balance training set
+    '''
+    
+    # Apply SMOTE to balance
     smote = SMOTE(random_state=42)
     X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
-
+    
+        
     # Initialize XGBoost classifier
     model = xgb.XGBClassifier(
-        #scale_pos_weight=class_weights,
+        scale_pos_weight=class_weights,
         objective="multi:softmax",
         num_class=label_encoder.classes_.shape[0],
-        eval_metric="mlogloss",
+        eval_metric=["mlogloss", "auc", "merror"],
         use_label_encoder=False,
         n_estimators=100,
         max_depth=5,
@@ -217,14 +269,14 @@ def XGBoost(df):
     print("Cross-validation scores:", cv_scores)
     print("Mean accuracy:", cv_scores.mean())
     
-    dump(model, "../models/XGBoost_4c.joblib")    
-    
-    
+    dump(model, "../models/XGBoost_4c_extended.joblib")
+
+
 
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
     df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_4c_extended_preprocessing.csv')
     
     #random_forest(df)
-    XGBoost(df)
+    #XGBoost(df)
     #simple_NN(df)

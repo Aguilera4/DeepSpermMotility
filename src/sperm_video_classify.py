@@ -12,6 +12,8 @@ from sklearn.ensemble import RandomForestClassifier
 import cv2
 import torch
 from sort.sort import *
+import joblib
+from preprocessing import *
 
 
 matplotlib.use("TkAgg")  # Use Tkinter-based backend
@@ -191,39 +193,105 @@ def calculate_features(name_video):
     # Load the tracking data from a CSV file
     df = pd.read_csv('../results/video_predicted/centroid_velocity/centroid_velocity_' + name_video + '.csv')
 
-    columns = ['sperm_id','Velocity','Straightness_Ratio','Angular_Displacement','Linearity','Curvature','ALH','BCF','Total_Distance','Displacement','Time_Elapsed']
+    columns = ['sperm_id','total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','linearity','wob','straightness','bcf','angular_displacement','curvature']
     data = pd.DataFrame(columns=columns)
 
     # Group by track_id and calculate velocity
     for track_id, group in df.groupby('track_id'):
         # Convert the columns to a list of tuples
         trajectory_path = list(zip(group['cx'], group['cy']))
-
-        # Features
-        veolicity_mean = calculate_velocity(trajectory_path,fps)
-        straightness = calculate_straightness(trajectory_path)
-        angular_displacement = calculate_angular_displacement(trajectory_path)
-        linearity = calculate_linearity(trajectory_path)
-        curvature = calculate_curvature(trajectory_path)
-        alh = calculate_alh(trajectory_path)
-        bcf = calculate_bcf(trajectory_path,fps)
-        total_distance = calculate_total_distance(trajectory_path)
-        displacement = calculate_displacement(trajectory_path)
+        
+        # Basic measures
         time_elapsed = calculate_time_elapsed(trajectory_path,fps)
+        displacement = calculate_displacement(trajectory_path)
+        total_distance = calculate_total_distance(trajectory_path)
 
-        new_row = pd.DataFrame([[track_id,veolicity_mean,straightness,angular_displacement,linearity,curvature,alh,bcf,total_distance,displacement,time_elapsed]], columns=data.columns)
+        # Standard measures
+        vcl = calculate_VCL(trajectory_path,fps)
+        vsl = calculate_VSL(trajectory_path,fps)
+        vap = calculate_VAP(trajectory_path,fps)
+        alh = calculate_ALH(trajectory_path)
+        mad = calculate_MAD(trajectory_path)
+        
+        # Commonly measures
+        linearity = calculate_linearity(trajectory_path,fps)
+        wob = calculate_WOB(trajectory_path,fps)
+        straightness = calculate_STR(trajectory_path)
+        bcf = calculate_BCF(trajectory_path,fps)
+        angular_displacement = calculate_angular_displacement(trajectory_path)
+        curvature = calculate_curvature(trajectory_path)
+
+        new_row = pd.DataFrame([[track_id,total_distance,displacement,time_elapsed,vcl,vsl,vap,alh,mad,linearity,wob,straightness,bcf,angular_displacement,curvature]], columns=data.columns)
         data = pd.concat([data,new_row], ignore_index=True)
 
     # Save the DataFrame
     data.to_csv('../results/video_predicted/features/features_' + name_video + '.csv', index=False)
 
 
+def preprocessing_data(name_video):
+    
+    # Load the tracking data from a CSV file
+    df = pd.read_csv('../results/video_predicted/features/features_' + name_video + '.csv')
+    
+    df_cleaned = deleted_null_values(df)
+    df_scaler = scaler(df_cleaned)
+    
+    df = pd.DataFrame(df_scaler, columns=['sperm_id','total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','linearity','wob','straightness','bcf','angular_displacement','curvature'])
+    
+    # Save the updated DataFrame with velocity data
+    df.to_csv('../results/video_predicted/preprocessing/' + name_video + '_preprocessing.csv', index=False)
+    
+
+def classify_data(name_video):
+    # Load model
+    loaded_model = joblib.load('../models/XGBoost_4c_extended.joblib')
+    
+    # Load data
+    df = pd.read_csv('../results/video_predicted/preprocessing/' + name_video + '_preprocessing.csv')
+    
+    # Delete unused column
+    X = df.drop(["sperm_id"], axis=1).values.astype(np.float32)
+    
+    # Predict
+    y_pred = loaded_model.predict(X)
+    
+    # Mapping of numeric values to class names
+    class_names = {
+        0: "Linear mean swim",
+        1: "Circular swim",
+        2: "Hyperactive",
+        3: "Inmotile"
+    }
+    
+    # Replace numeric values with class names
+    y_pred_mapped = [class_names[label] for label in y_pred]
+    
+    # Create a count plot with different colors per class
+    ax = sns.countplot(x=y_pred_mapped, palette="Set2")
+
+    # Add the count labels on top of each bar
+    for p in ax.patches:
+        ax.annotate(f'{p.get_height()}', 
+                    (p.get_x() + p.get_width() / 2., p.get_height()), 
+                    ha='center', va='center', 
+                    fontsize=12, color='black', 
+                    xytext=(0, 5), textcoords='offset points')
+
+    plt.title("Distribution of Sperm Motility Categories")
+    plt.xlabel("Categories")
+    plt.ylabel("Count")
+    plt.tight_layout()
+    plt.show()
+        
+    
 def classify_video(video_path,name_video):
     
-    traking_video(video_path,name_video)
-    calculate_centroid_velocity(name_video)
+    #traking_video(video_path,name_video)
+    #calculate_centroid_velocity(name_video)
     #show_video_tracking(video_path,name_video)
-    calculate_features(name_video)
+    #calculate_features(name_video)
+    #preprocessing_data(name_video)
+    classify_data(name_video)
     
 
 if __name__ == "__main__":

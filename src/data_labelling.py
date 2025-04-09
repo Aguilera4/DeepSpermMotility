@@ -34,7 +34,7 @@ def data_labelling_2c(df):
         mad = calculate_MAD(trajectory_path)
         
         # Commonly measures
-        linearity = calculate_linearity(trajectory_path)
+        linearity = calculate_linearity(trajectory_path,fps)
         wob = calculate_WOB(trajectory_path,fps)
         straightness = calculate_STR(trajectory_path)
         bcf = calculate_BCF(trajectory_path,fps)
@@ -48,7 +48,7 @@ def data_labelling_2c(df):
         data = pd.concat([data,new_row], ignore_index=True)
 
     # Save the DataFrame
-    data.to_csv('../results/data_features_labeling/dataset.csv', index=False)
+    data.to_csv('../results/data_features_labelling/dataset_2c.csv', index=False)
     
     
 def data_labelling_4c(df):
@@ -90,12 +90,12 @@ def data_labelling_4c(df):
         data = pd.concat([data,new_row], ignore_index=True)
 
     # Save the DataFrame
-    data.to_csv('../results/data_features_labeling/dataset_4c_extended.csv', index=False)
+    data.to_csv('../results/data_features_labelling/dataset_4c_extended.csv', index=False)
     
     
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_sperm_tracking/sperm_tracking_extended_data.csv')
+    df = pd.read_csv('../results/data_sperm_tracking/sperm_tracking_data.csv')
     
-    #data_labelling_2c(df)
-    data_labelling_4c(df)
+    data_labelling_2c(df)
+    #data_labelling_4c(df)
