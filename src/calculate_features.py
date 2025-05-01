@@ -28,7 +28,7 @@ def calculate_displacement(trajectory):
     """
     start_x, start_y = trajectory[0]
     end_x, end_y = trajectory[-1]
-    return np.sqrt((end_x - start_x)**2 + (end_y - start_y)**2)
+    return np.round(np.sqrt((end_x - start_x)**2 + (end_y - start_y)**2),2)
 
 
 def calculate_total_distance(trajectory):
@@ -41,7 +41,7 @@ def calculate_total_distance(trajectory):
     Returns:
         float: Total distance in pixels.
     """
-    return sum(np.sqrt((trajectory[i][0] - trajectory[i-1][0])**2 + (trajectory[i][1] - trajectory[i-1][1])**2) for i in range(1, len(trajectory)))
+    return np.round(sum(np.sqrt((trajectory[i][0] - trajectory[i-1][0])**2 + (trajectory[i][1] - trajectory[i-1][1])**2) for i in range(1, len(trajectory))),2)
 
 
 ############### Standard measures ###############
@@ -59,7 +59,7 @@ def calculate_VCL(trajectory, fps):
     """
     total_distance = calculate_total_distance(trajectory)
     time_elapsed = calculate_time_elapsed(trajectory,fps)
-    return  np.divide(total_distance, time_elapsed, where=(time_elapsed != 0))
+    return  np.round(np.divide(total_distance, time_elapsed, where=(time_elapsed != 0)),2)
 
 def calculate_VSL(trajectory, fps):
     """
@@ -74,7 +74,7 @@ def calculate_VSL(trajectory, fps):
     """
     displacement = calculate_displacement(trajectory)
     time_elapsed = calculate_time_elapsed(trajectory,fps)
-    return  np.divide(displacement, time_elapsed, where=(time_elapsed != 0))
+    return  np.round(np.divide(displacement, time_elapsed, where=(time_elapsed != 0)),2)
 
 
 def calculate_VAP(trajectory,fps):
@@ -105,7 +105,7 @@ def calculate_VAP(trajectory,fps):
     
     time_elapsed = calculate_time_elapsed(trajectory,fps)
 
-    return  np.divide(smooth_path_length, time_elapsed, where=(time_elapsed != 0))
+    return  np.round(np.divide(smooth_path_length, time_elapsed, where=(time_elapsed != 0)),2)
 
 
 def calculate_ALH(trajectory):
@@ -127,7 +127,7 @@ def calculate_ALH(trajectory):
         numerator = np.abs((end_y - start_y) * x - (end_x - start_x) * y + end_x * start_y - end_y * start_x)
         denominator = np.sqrt((end_y - start_y)**2 + (end_x - start_x)**2)
         lateral_displacements.append(np.divide(numerator, denominator, where=(denominator != 0)))
-    return np.max(lateral_displacements)
+    return np.round(np.max(lateral_displacements),2)
 
 
 def calculate_MAD(trajectory):
@@ -145,7 +145,7 @@ def calculate_MAD(trajectory):
     y = [x[1] for x in trajectory]
     angles = np.arctan2(np.diff(y), np.diff(x))  # Calculate angles
     ideal_angle = np.arctan2(y[-1] - y[0], x[-1] - x[0])  # Straight line angle
-    return np.mean(np.abs(angles - ideal_angle))
+    return np.round(np.mean(np.abs(angles - ideal_angle)),2)
 
 
 
@@ -164,7 +164,7 @@ def calculate_linearity(trajectory,fps):
     """
     VSL = calculate_VSL(trajectory,fps)
     VCL = calculate_VCL(trajectory, fps)
-    return np.divide(VSL, VCL, where=(VCL != 0))
+    return np.round(np.divide(VSL, VCL, where=(VCL != 0)),2)
 
 
 def calculate_WOB(trajectory,fps):
@@ -180,7 +180,7 @@ def calculate_WOB(trajectory,fps):
     """
     VAP = calculate_VAP(trajectory,fps)
     VCL = calculate_VCL(trajectory, fps)
-    return np.divide(VAP, VCL, where=(VCL != 0))
+    return np.round(np.divide(VAP, VCL, where=(VCL != 0)),2)
 
 
 def calculate_STR(trajectory):
@@ -195,7 +195,7 @@ def calculate_STR(trajectory):
     """
     displacement = calculate_displacement(trajectory)
     total_distance = calculate_total_distance(trajectory)
-    return np.divide(displacement, total_distance, where=(total_distance != 0))
+    return np.round(np.divide(displacement, total_distance, where=(total_distance != 0)),2)
 
 
 def calculate_BCF(trajectory, fps):
@@ -222,7 +222,7 @@ def calculate_BCF(trajectory, fps):
         if numerator1 * numerator2 < 0:
             crossings += 1
     time_elapsed = calculate_time_elapsed(trajectory,fps)
-    return np.divide(crossings, time_elapsed, where=(time_elapsed != 0))
+    return np.round(np.divide(crossings, time_elapsed, where=(time_elapsed != 0)),2)
 
 
 def calculate_angular_displacement(trajectory):
@@ -243,7 +243,7 @@ def calculate_angular_displacement(trajectory):
         dy2 = trajectory[i+1][1] - trajectory[i][1]
         angle = np.arctan2(dy2, dx2) - np.arctan2(dy1, dx1)
         angles.append(angle)
-    return np.mean(angles)
+    return np.round(np.mean(angles),2)
 
 
 def calculate_curvature(trajectory):
@@ -266,4 +266,4 @@ def calculate_curvature(trajectory):
         ds = np.sqrt((trajectory[i+1][0] - trajectory[i][0])**2 + (trajectory[i+1][1] - trajectory[i][1])**2)
         curvature = np.abs(np.divide(dtheta, ds, where=(ds != 0)))
         curvatures.append(curvature)
-    return np.mean(curvatures)
+    return np.round(np.mean(curvatures),2)

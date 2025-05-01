@@ -44,3 +44,203 @@ Classify
 
 Features
  Page 156 
+
+
+
+ Probar tracking
+ 5 seg
+ 15 seg
+ 30 seg
+
+
+ Mirar valores estándar para cada característica de la OMS
+
+ comprobar que el resto de videos son de personas con obesidad - Comprobado que provienen del mismo estudio
+
+ probar con las 5 mejores características
+
+
+
+ Pruebas realizadas
+
+  - 2 clases
+    - 20 videos
+      - primeros 5 seg
+          RandomForest
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          XGBoost
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Tabpfn
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Deep learning
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+
+      - primeros 15 seg
+          RandomForest
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          XGBoost
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Tabpfn
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Deep learning
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+
+      
+      - primeros 30 seg
+          RandomForest
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          XGBoost
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Tabpfn
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Deep learning
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+
+      
+    - Extendido
+      - primeros 5 seg
+          RandomForest
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          XGBoost
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Tabpfn
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Deep learning
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+
+      - primeros 15 seg
+          RandomForest
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          XGBoost
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Tabpfn
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Deep learning
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+
+      
+      - primeros 30 seg
+          RandomForest
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          XGBoost
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Tabpfn
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Deep learning
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+
+
+  
+  - 4 clases
+    - 20 videos
+      - primeros 5 seg
+          RandomForest
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          XGBoost
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Tabpfn
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Deep learning
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+
+      - primeros 15 seg
+          RandomForest
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          XGBoost
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Tabpfn
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Deep learning
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+
+      
+      - primeros 30 seg
+          RandomForest
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          XGBoost
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Tabpfn
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Deep learning
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+
+      
+    - Extendido
+      - primeros 5 seg
+          RandomForest
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          XGBoost
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Tabpfn
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Deep learning
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+
+      - primeros 15 seg
+          RandomForest
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          XGBoost
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Tabpfn
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Deep learning
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+
+      
+      - primeros 30 seg
+          RandomForest
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          XGBoost
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Tabpfn
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características
+          Deep learning
+            - Sin seleccion de caracteristicas
+            - Con seleccion de características

@@ -5,16 +5,11 @@ import matplotlib.pyplot as plt
 from classify_by_movement import *
 import pandas as pd
 from calculate_features import *
-from joblib import dump, load
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_curve, auc
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
 import cv2
 import torch
 from sort.sort import *
 import joblib
 from preprocessing import *
-
 
 matplotlib.use("TkAgg")  # Use Tkinter-based backend
 
@@ -67,7 +62,7 @@ def traking_video(video_path,name_video):# Video capture
 
         # Wait for a key press (25ms delay between frames)
         # Press 'q' to exit the sequence
-        if cv2.waitKey(25) & 0xFF == ord('q') or frame_id == 250:
+        if cv2.waitKey(25) & 0xFF == ord('q') or frame_id == 750:
             break
 
         frame_id += 1
@@ -101,16 +96,16 @@ def calculate_centroid_velocity(name_video):
         group['delta_y'] = group['cy'].diff()
 
         # Calculate velocity (pixels per second)
-        group['velocity_x'] = group['delta_x'] / dt
-        group['velocity_y'] = group['delta_y'] / dt
+        group['velocity_x'] = np.round(group['delta_x'] / dt,2)
+        group['velocity_y'] = np.round(group['delta_y'] / dt,2)
 
         # Calculate speed (magnitude of velocity)
-        group['speed'] = (group['velocity_x']**2 + group['velocity_y']**2)**0.5
+        group['speed'] = np.round((group['velocity_x']**2 + group['velocity_y']**2)**0.5,2)
         
         
         # Calculate mean and maximum velocity
-        group["mean_velocity"] = group['speed'].mean()
-        group["max_velocity"] = group['speed'].max()
+        group["mean_velocity"] = np.round(group['speed'].mean(),2)
+        group["max_velocity"] = np.round(group['speed'].max(),2)
         
         df.loc[group.index, ['mean_velocity', 'max_velocity']] = group[['mean_velocity', 'max_velocity']].fillna(0)
         
@@ -164,8 +159,8 @@ def show_video_tracking(video_path,name_video):
             for i in range(1, len(trajectories[track_id])):
                 cv2.line(frame, (int(trajectories[track_id][i - 1][0]),int(trajectories[track_id][i - 1][1])), (int(trajectories[track_id][i][0]),int(trajectories[track_id][i][1])), (0, 255, 0), 2)
                 
-            #cv2.putText(frame, str(classes_name[int(row['class'])]), (cx + 10, cy), cv2.FONT_HERSHEY_PLAIN, 0.6, (0, 255, 0), 2)
-            #cv2.rectangle(frame, (int(row['xmin']), int(row['ymin'])), (int(row['xmax']), int(row['ymax'])), (0,255,0) if int(row['class'])==0.0 else (255,0,0) if int(row['class'])==1.0 else (0, 255, 255),1)
+            cv2.putText(frame, str(int(track_id)), (cx + 10, cy), cv2.FONT_HERSHEY_PLAIN, 0.6, (0, 255, 0), 2)
+            cv2.rectangle(frame, (int(row['xmin']), int(row['ymin'])), (int(row['xmax']), int(row['ymax'])), (0,255,0))
             
             # Draw the velocity vector
             #cv2.arrowedLine(frame, (cx, cy), end_point, (0, 255, 0), 2)
@@ -247,7 +242,7 @@ def classify_data(name_video):
     loaded_model = joblib.load('../models/XGBoost_4c_extended.joblib')
     
     # Load data
-    df = pd.read_csv('../results/video_predicted/preprocessing/' + name_video + '_preprocessing.csv')
+    df = pd.read_csv('..results/video_predicted/preprocessing/' + name_video + '_preprocessing.csv')
     
     # Delete unused column
     X = df.drop(["sperm_id"], axis=1).values.astype(np.float32)
@@ -287,17 +282,17 @@ def classify_data(name_video):
 def classify_video(video_path,name_video):
     
     #traking_video(video_path,name_video)
-    #calculate_centroid_velocity(name_video)
-    #show_video_tracking(video_path,name_video)
-    #calculate_features(name_video)
+    calculate_centroid_velocity(name_video)
+    show_video_tracking(video_path,name_video)
+    calculate_features(name_video)
     #preprocessing_data(name_video)
-    classify_data(name_video)
+    #classify_data(name_video)
     
 
 if __name__ == "__main__":
     # Path to video
-    video_path = '../data/VISEM_Tracking/val/5_0_30/5_0_30.mp4'
+    video_path = '../data/VISEM_Tracking/train/12/12.mp4'
     
-    classify_video(video_path,'Prueba_1')
+    classify_video(video_path,'Prueba_clasificacion_12')
     
     
