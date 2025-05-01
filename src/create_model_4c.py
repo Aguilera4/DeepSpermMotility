@@ -27,6 +27,8 @@ from tabpfn_extensions.rf_pfn import (
     RandomForestTabPFNRegressor,
 )
 import joblib
+from sklearn.decomposition import PCA
+from sklearn.utils import class_weight
 
 matplotlib.use("TkAgg")  # Use Tkinter-based backend
 warnings.filterwarnings("ignore")
@@ -104,7 +106,8 @@ def show_learning_curve(results):
     # Plot learning curves
     epochs = len(results['validation_0']['mlogloss'])
     x_axis = range(epochs)
-    
+        
+    # Accuracy
     plt.figure(figsize=(10, 6))
     plt.plot(x_axis, results['validation_0']['auc'], label='Train')
     plt.plot(x_axis, results['validation_1']['auc'], label='Test')
@@ -115,6 +118,7 @@ def show_learning_curve(results):
     plt.grid(True)
     plt.show()
 
+    # mlogloss
     plt.figure(figsize=(10, 6))
     plt.plot(x_axis, results['validation_0']['mlogloss'], label='Train')
     plt.plot(x_axis, results['validation_1']['mlogloss'], label='Test')
@@ -126,6 +130,7 @@ def show_learning_curve(results):
     plt.show()
     
     
+    # merror
     plt.figure(figsize=(10, 6))
     plt.plot(x_axis, results['validation_0']['merror'], label='Train')
     plt.plot(x_axis, results['validation_1']['merror'], label='Test')
@@ -188,9 +193,12 @@ def random_forest(df):
     X = df.drop(["label","sperm_id"], axis=1).values
     y = df["label"]
 
-    # Split data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    pca = PCA(n_components=2)
+    X_pca = pca.fit_transform(X)
 
+    # Split data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X_pca, y, test_size=0.3, random_state=42)
+    
     # Train a Random Forest classifier
     clf = RandomForestClassifier(n_estimators=100, random_state=42, max_depth=10, class_weight='balanced')
     clf.fit(X_train, y_train)
@@ -201,7 +209,6 @@ def random_forest(df):
     # Show metrics
     show_metrics(y_test,y_pred)
     draw_confusion_matrix(y_test,y_pred)
-    draw_roc_auc_curve(clf,X_test,y_test)
     
     dump(clf, "../models/random_forest_4c.joblib")
     
@@ -264,18 +271,16 @@ def XGBoost(df):
     df['label'] = label_encoder.fit_transform(df['label'])
     
     # Features and labels
-    X = df.drop(["label","sperm_id","displacement","time_elapsed","mad","wob","straightness","bcf","angular_displacement","curvature","alh","total_distance","linearity"], axis=1).values.astype(np.float32)
-    #X = df.drop(["label","sperm_id"], axis=1).values.astype(np.float32)
+    #X = df.drop(["label","displacement","time_elapsed","mad","wob","straightness","bcf","angular_displacement","curvature","alh","total_distance","linearity"], axis=1).values.astype(np.float32)
+    X = df.drop(["label"], axis=1).values.astype(np.float32)
     y = df["label"]
+
+    # PCA
+    pca = PCA(n_components=2)
+    X_pca = pca.fit_transform(X)
     
     # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
-    
-    
-    eval_set = [(X_train, y_train), (X_test, y_test)]
-    
-    # Calculate the class weights
-    class_weights = len(y_train) / (len(label_encoder.classes_) * y_train.value_counts())
+    X_train, X_test, y_train, y_test = train_test_split(X_pca, y, test_size=0.2, random_state=42, stratify=y)
     
     '''
     # Apply RandomUnderSampler to balance
@@ -283,32 +288,48 @@ def XGBoost(df):
     X_train_resampled, y_train_resampled = rus.fit_resample(X_train, y_train)
     '''
     
+    class_counts = y_train.value_counts()
+
+    # Display counts
+    print(class_counts)
+    
     # Apply SMOTE to balance
     smote = SMOTE(k_neighbors=2, random_state=42)
     X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
     
+    class_counts = y_train_resampled.value_counts()
+
+    # Display counts
+    print(class_counts)
     
-        
+    # Calculate the class weights
+    class_weights = class_weight.compute_class_weight('balanced', classes=np.unique(y), y=y)
+    
     # Initialize XGBoost classifier
     model = xgb.XGBClassifier(
         scale_pos_weight=class_weights,
+        class_weight='balanced',
         objective="multi:softmax",
         num_class=label_encoder.classes_.shape[0],
         eval_metric=["mlogloss", "auc", "merror"],
         use_label_encoder=False,
         n_estimators=100,
         max_depth=5,
-        learning_rate=0.01,
+        learning_rate=0.001,
         random_state=42
     )
 
+    
+    # eval_set
+    eval_set = [(X_train, y_train), (X_test, y_test)]
+    evals_result = {}
+    
     # Train the model
     model.fit(X_train_resampled, y_train_resampled, eval_set=eval_set, verbose=False)
     
-    print(model)
     importances = model.feature_importances_
-    feature_names = df.drop(["label","sperm_id","displacement","time_elapsed","mad","wob","straightness","bcf","angular_displacement","curvature","alh","total_distance","linearity"], axis=1).columns  # Or provide a list if it's a NumPy array
-    #feature_names = df.drop(["label","sperm_id"], axis=1).columns  # Or provide a list if it's a NumPy array
+    #feature_names = df.drop(["label","sperm_id","displacement","time_elapsed","mad","wob","straightness","bcf","angular_displacement","curvature","alh","total_distance","linearity"], axis=1).columns  # Or provide a list if it's a NumPy array
+    feature_names = df.drop(["label"], axis=1).columns  # Or provide a list if it's a NumPy array
 
     # Sort by importance
     indices = np.argsort(importances)[::-1]
@@ -317,7 +338,7 @@ def XGBoost(df):
     plt.figure(figsize=(10, 6))
     plt.title("Feature Importances")
     plt.bar(range(len(importances)), importances[indices], align="center")
-    plt.xticks(range(len(importances)), [feature_names[i] for i in indices], rotation=45, ha='right')
+    plt.xticks(range(len(importances)), ['PCA_1','PCA_2'], rotation=45, ha='right')
     plt.tight_layout()
     plt.show()
 
@@ -408,10 +429,10 @@ def tabPFN_load():
 
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_extended_4c_15s_preprocessing.csv')
+    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_extended_4c_30s_preprocessing_v2.csv')
     
-    random_forest(df)
-    #XGBoost(df)
+    #random_forest(df)
+    XGBoost(df)
     #simple_NN(df)
     #tabPFN(df)
     #tabPFN_load()
