@@ -126,7 +126,7 @@ def get_more_important_features(df):
 
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_extended_4c_15s_preprocessing_v2.csv')
+    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_4c_30s_preprocessing_v2.csv')
     
     # Basic information
     print(df.head())
@@ -134,9 +134,9 @@ if __name__ == "__main__":
     print(df.describe())
     
     # Advanced information
-    #draw_class_distribution(df)
+    draw_class_distribution(df)
     #draw_correlation_matix(df)
     #draw_null_count(df)
     #draw_distribucion_columns(df)
-    show_outliers(df)
+    #show_outliers(df)
     #get_more_important_features(df)

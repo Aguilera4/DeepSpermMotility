@@ -29,6 +29,7 @@ from tabpfn_extensions.rf_pfn import (
 import joblib
 from sklearn.decomposition import PCA
 from sklearn.utils import class_weight
+from sklearn.linear_model import LogisticRegression
 
 matplotlib.use("TkAgg")  # Use Tkinter-based backend
 warnings.filterwarnings("ignore")
@@ -190,14 +191,14 @@ def plot_learning_curve_RF(clf,X,y):
 
 def random_forest(df):
     # Features and labels
-    X = df.drop(["label","sperm_id"], axis=1).values
+    X = df.drop(["label"], axis=1).values
     y = df["label"]
 
     pca = PCA(n_components=2)
     X_pca = pca.fit_transform(X)
 
     # Split data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(X_pca, y, test_size=0.3, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
     
     # Train a Random Forest classifier
     clf = RandomForestClassifier(n_estimators=100, random_state=42, max_depth=10, class_weight='balanced')
@@ -211,59 +212,36 @@ def random_forest(df):
     draw_confusion_matrix(y_test,y_pred)
     
     dump(clf, "../models/random_forest_4c.joblib")
-    
-    
 
-def simple_NN(df):    
-    X = df.drop(columns=['label','sperm_id']).values.astype(np.float32)
-    y = keras.utils.to_categorical(df['label'].values, 4)  # One-hot encoding for 4 classes
-    
-    '''smote = SMOTE(sampling_strategy='auto', random_state=42)
-    x_resampled, y_resampled = smote.fit_resample(X, y)'''
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     
-    model = keras.Sequential([
-        layers.InputLayer(input_shape=(X_train.shape[1],)),  # Input layer for the features
-        layers.Dense(128, activation='relu'),  # First hidden layer with 128 neurons
-        layers.Dropout(0.2),  # Dropout for regularization to prevent overfitting
-        layers.Dense(64, activation='relu'),  # Second hidden layer with 64 neurons
-        layers.Dropout(0.2),  # Dropout for regularization
-        layers.Dense(32, activation='relu'),  # Third hidden layer with 32 neurons
-        layers.Dense(4, activation='softmax')  # Output layer with 4 classes and softmax activation
-    ])
-    
-    # Compile model
-    model.compile(optimizer=optimizers.Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
-    
-    early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
-    
-  
-    # Train the model normally
-    history = model.fit(X_train, y_train, epochs=5, batch_size=32, validation_data=(X_test, y_test), callbacks=[early_stopping])
-    
-    '''
-    model.layers[0].trainable = True      
-    model.layers[1].trainable = True  
+def logistic_regression(df):
+    # Features and labels
+    X = df.drop(["label"], axis=1).values
+    y = df["label"]
 
-    # Compile the model with a lower learning rate for fine-tuning
-    model.compile(optimizer=optimizers.Adam(learning_rate=0.0001), loss='categorical_crossentropy', metrics=['accuracy'])
+    #pca = PCA(n_components=2)
+    #X_pca = pca.fit_transform(X)
 
-    # Continue training with fine-tuning for 5 more epochs
-    history = model.fit(X_train, y_train, epochs=5, batch_size=32, validation_data=(X_test, y_test))
-    '''
+    # Split data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
+    
+    # Apply SMOTE to balance
+    smote = SMOTE(k_neighbors=2, random_state=42)
+    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+    
+    # Train a Logistic regression model
+    clf = LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000)
+    clf.fit(X_train_resampled, y_train_resampled)
 
-    # Predict
-    loss, accuracy = model.evaluate(X_test, y_test)
-    print(f"Test Loss: {loss:.4f}")
-    print(f"Test Accuracy: {accuracy:.4f}")
+    # Evaluate the model
+    y_pred = clf.predict(X_test)
     
-    plot_learning_curve_NN(history)
+    # Show metrics
+    show_metrics(y_test,y_pred)
+    draw_confusion_matrix(y_test,y_pred)
     
-    y_pred = (model.predict(X_test) > 0.5).astype("int32")
-    print(classification_report(y_test, y_pred))
-    
-    dump(model, "../models/simple_NN_4c_extended.joblib")    
+    dump(clf, "../models/linear_regression_4c.joblib")
     
 
 def XGBoost(df):
@@ -310,12 +288,12 @@ def XGBoost(df):
         scale_pos_weight=class_weights,
         class_weight='balanced',
         objective="multi:softmax",
-        num_class=label_encoder.classes_.shape[0],
+        num_class=4,
         eval_metric=["mlogloss", "auc", "merror"],
         use_label_encoder=False,
         n_estimators=100,
         max_depth=5,
-        learning_rate=0.001,
+        learning_rate=0.0001,
         random_state=42
     )
 
@@ -411,7 +389,6 @@ def tabPFN_load():
     
     loaded_model = joblib.load('../models/TabPFN_4c_15s_extended.joblib')
     
-    
     X_train = pd.read_csv('../results/train_test_split/X_train.csv')
     X_test = pd.read_csv('../results/train_test_split/X_test.csv')
     y_train = pd.read_csv('../results/train_test_split/y_train.csv')
@@ -426,12 +403,66 @@ def tabPFN_load():
     # Predict labels
     predictions = loaded_model.predict(X_test.iloc[[0]])
     print("Accuracy", accuracy_score(y_test.iloc[[0]], predictions))
+    
+    
+
+def simple_NN(df):
+    X = df.drop(columns=['label','sperm_id']).values.astype(np.float32)
+    y = keras.utils.to_categorical(df['label'].values, 4)  # One-hot encoding for 4 classes
+    
+    '''smote = SMOTE(sampling_strategy='auto', random_state=42)
+    x_resampled, y_resampled = smote.fit_resample(X, y)'''
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    
+    model = keras.Sequential([
+        layers.InputLayer(input_shape=(X_train.shape[1],)),  # Input layer for the features
+        layers.Dense(128, activation='relu'),  # First hidden layer with 128 neurons
+        layers.Dropout(0.2),  # Dropout for regularization to prevent overfitting
+        layers.Dense(64, activation='relu'),  # Second hidden layer with 64 neurons
+        layers.Dropout(0.2),  # Dropout for regularization
+        layers.Dense(32, activation='relu'),  # Third hidden layer with 32 neurons
+        layers.Dense(4, activation='softmax')  # Output layer with 4 classes and softmax activation
+    ])
+    
+    # Compile model
+    model.compile(optimizer=optimizers.Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
+    
+    early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+    
+  
+    # Train the model normally
+    history = model.fit(X_train, y_train, epochs=5, batch_size=32, validation_data=(X_test, y_test), callbacks=[early_stopping])
+    
+    '''
+    model.layers[0].trainable = True      
+    model.layers[1].trainable = True  
+
+    # Compile the model with a lower learning rate for fine-tuning
+    model.compile(optimizer=optimizers.Adam(learning_rate=0.0001), loss='categorical_crossentropy', metrics=['accuracy'])
+
+    # Continue training with fine-tuning for 5 more epochs
+    history = model.fit(X_train, y_train, epochs=5, batch_size=32, validation_data=(X_test, y_test))
+    '''
+
+    # Predict
+    loss, accuracy = model.evaluate(X_test, y_test)
+    print(f"Test Loss: {loss:.4f}")
+    print(f"Test Accuracy: {accuracy:.4f}")
+    
+    plot_learning_curve_NN(history)
+    
+    y_pred = (model.predict(X_test) > 0.5).astype("int32")
+    print(classification_report(y_test, y_pred))
+    
+    dump(model, "../models/simple_NN_4c_extended.joblib")
 
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_extended_4c_30s_preprocessing_v2.csv')
+    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_4c_30s_preprocessing_v2.csv')
     
     #random_forest(df)
+    #logistic_regression(df)
     XGBoost(df)
     #simple_NN(df)
     #tabPFN(df)
