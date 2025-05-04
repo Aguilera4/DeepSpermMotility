@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from classify_by_movement import *
 import pandas as pd
 from calculate_features import *
+from sklearn.model_selection import GridSearchCV
 from joblib import dump
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_curve, auc, roc_auc_score
 from sklearn.model_selection import train_test_split, cross_val_score
@@ -16,6 +17,7 @@ from sklearn.model_selection import learning_curve
 import numpy as np
 import os
 import warnings
+from sklearn.preprocessing import label_binarize
 from tensorflow.keras.callbacks import EarlyStopping
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from imblearn.over_sampling import SMOTE
@@ -30,9 +32,16 @@ import joblib
 from sklearn.decomposition import PCA
 from sklearn.utils import class_weight
 from sklearn.linear_model import LogisticRegression
+from sklearn.feature_selection import SelectFromModel
+from sklearn.metrics import roc_curve, auc, precision_recall_curve, confusion_matrix, ConfusionMatrixDisplay
+
+
 
 matplotlib.use("TkAgg")  # Use Tkinter-based backend
 warnings.filterwarnings("ignore")
+
+
+
 
 def draw_confusion_matrix(y_test,y_pred):
     # Compute confusion matrix
@@ -50,49 +59,6 @@ def draw_confusion_matrix(y_test,y_pred):
     # Show the plot
     plt.show()
     
-    
-def draw_roc_auc_curve(clf,X_test,y_test):
-    # Obtener probabilidades
-    y_score = clf.predict_proba(X_test)
-
-    # Manejo de RandomForest multicapa de salida
-    # Cada salida corresponde a una clase
-    if isinstance(y_score, list):  # scikit-learn da una lista para multiclase
-        y_score = np.stack([prob[:, 1] for prob in y_score], axis=1)
-
-    # Curvas ROC y AUC
-    fpr = dict()
-    tpr = dict()
-    roc_auc = dict()
-    n_classes = 4
-
-    for i in range(n_classes):
-        fpr[i], tpr[i], _ = roc_curve(y_test[:, i], y_score[:, i])
-        roc_auc[i] = auc(fpr[i], tpr[i])
-
-    # Macro AUC (promedio de AUC por clase)
-    all_fpr = np.unique(np.concatenate([fpr[i] for i in range(n_classes)]))
-    mean_tpr = np.zeros_like(all_fpr)
-    for i in range(n_classes):
-        mean_tpr += np.interp(all_fpr, fpr[i], tpr[i])
-    mean_tpr /= n_classes
-    macro_auc = auc(all_fpr, mean_tpr)
-
-    # Graficar
-    plt.figure(figsize=(8, 6))
-    colors = ['blue', 'green', 'orange']
-    for i in range(n_classes):
-        plt.plot(fpr[i], tpr[i], color=colors[i],
-                label=f'Clase {i} (AUC = {roc_auc[i]:.2f})')
-
-    plt.plot([0, 1], [0, 1], 'k--', lw=2)
-    plt.xlabel("Tasa de Falsos Positivos (FPR)")
-    plt.ylabel("Tasa de Verdaderos Positivos (TPR)")
-    plt.title(f"Curvas ROC por clase - AUC macro = {macro_auc:.2f}")
-    plt.legend(loc="lower right")
-    plt.grid()
-    plt.tight_layout()
-    plt.show()
 
 def show_metrics(y_test,y_pred):
     # Métricas
@@ -130,8 +96,7 @@ def show_learning_curve(results):
     plt.grid(True)
     plt.show()
     
-    
-    # merror
+    '''# merror
     plt.figure(figsize=(10, 6))
     plt.plot(x_axis, results['validation_0']['merror'], label='Train')
     plt.plot(x_axis, results['validation_1']['merror'], label='Test')
@@ -140,7 +105,7 @@ def show_learning_curve(results):
     plt.title('XGBoost Learning Curve')
     plt.legend()
     plt.grid(True)
-    plt.show()
+    plt.show()'''
 
 def plot_learning_curve_NN(history):
     plt.plot(history.history['accuracy'], label='Train Acc')
@@ -186,6 +151,66 @@ def plot_learning_curve_RF(clf,X,y):
     plt.legend(loc="best")
     plt.tight_layout()
     plt.show()
+    
+def select_features_importance(X_train,y_train,X_test,columns):
+    # Train a Random Forest model
+    rf = RandomForestClassifier(n_estimators=100, random_state=42)
+    rf.fit(X_train, y_train)
+
+    # Get feature importances from the trained Random Forest model
+    feature_importances = rf.feature_importances_
+
+    # Create a DataFrame to display the features and their importance scores
+    importance_df = pd.DataFrame({'Feature': columns, 'Importance': feature_importances})
+    importance_df = importance_df.sort_values(by='Importance', ascending=False)
+
+    # Print the most important features
+    print(importance_df)
+
+    # Use SelectFromModel to select features based on importance (e.g., select the top 10 most important features)
+    sfm = SelectFromModel(rf, threshold="mean", max_features=4)
+    X_selected = sfm.transform(X_train)
+    
+    # Transform the test set using the selected features
+    X_test_selected = sfm.transform(X_test)
+
+    
+    return [X_selected,X_test_selected]
+
+
+def draw_roc_auc_curve(y_test,y_pred_prob):
+    # Compute ROC curve and AUC for each class
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    n_classes = 4
+    
+    y_test = np.array(y_test)
+    
+    # Reshape if 1D
+    if y_test.ndim == 1:
+        y_test = y_test.reshape(-1, 1)
+        
+    y_test = label_binarize(y_test, classes=[0, 1, 2, 3])
+
+    for i in range(n_classes):
+        fpr[i], tpr[i], _ = roc_curve(y_test[:, i], y_pred_prob[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+
+    # Plot all ROC curves
+    plt.figure(figsize=(8, 6))
+    colors = ['blue', 'green', 'red', 'orange']
+    for i in range(n_classes):
+        plt.plot(fpr[i], tpr[i], color=colors[i],
+                label=f'Class {i} (AUC = {roc_auc[i]:.2f})')
+
+    plt.plot([0, 1], [0, 1], 'k--')  # diagonal line
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Multiclass ROC Curve (OvR)')
+    plt.legend(loc='lower right')
+    plt.grid()
+    plt.show()
 
 ############################## MODELS ##############################
 
@@ -217,95 +242,99 @@ def random_forest(df):
     
 def logistic_regression(df):
     # Features and labels
-    X = df.drop(["label"], axis=1).values
+    X = df.drop(["label","displacement","time_elapsed","mad","wob","bcf","angular_displacement","curvature","total_distance"], axis=1)
+    #X = df.drop(["label"], axis=1).values
     y = df["label"]
 
     #pca = PCA(n_components=2)
     #X_pca = pca.fit_transform(X)
 
     # Split data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=42)
     
     # Apply SMOTE to balance
     smote = SMOTE(k_neighbors=2, random_state=42)
     X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
     
     # Train a Logistic regression model
-    clf = LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=1000)
+    clf = LogisticRegression(multi_class='multinomial', solver='newton-cg', max_iter=1000)
     clf.fit(X_train_resampled, y_train_resampled)
 
     # Evaluate the model
     y_pred = clf.predict(X_test)
+    y_pred_prob = clf.predict_proba(X_test) # Probability estimates for the positive class
     
     # Show metrics
     show_metrics(y_test,y_pred)
     draw_confusion_matrix(y_test,y_pred)
+    draw_roc_auc_curve(y_test,y_pred_prob)
     
-    dump(clf, "../models/linear_regression_4c.joblib")
+    #dump(clf, "../models/linear_regression_4c.joblib")
     
 
 def XGBoost(df):
-    label_encoder =  LabelEncoder()
-    df['label'] = label_encoder.fit_transform(df['label'])
-    
     # Features and labels
-    #X = df.drop(["label","displacement","time_elapsed","mad","wob","straightness","bcf","angular_displacement","curvature","alh","total_distance","linearity"], axis=1).values.astype(np.float32)
-    X = df.drop(["label"], axis=1).values.astype(np.float32)
-    y = df["label"]
+    X = df.drop(["label","displacement","time_elapsed","mad","wob","bcf","angular_displacement","curvature","total_distance"], axis=1)
+    #X = df.drop(["label"], axis=1)
+    y = LabelEncoder().fit_transform(df['label'])
 
-    # PCA
+    '''# PCA
     pca = PCA(n_components=2)
-    X_pca = pca.fit_transform(X)
+    X_pca = pca.fit_transform(X)'''
     
     # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(X_pca, y, test_size=0.2, random_state=42, stratify=y)
-    
-    '''
-    # Apply RandomUnderSampler to balance
-    rus = RandomUnderSampler(random_state=42)
-    X_train_resampled, y_train_resampled = rus.fit_resample(X_train, y_train)
-    '''
-    
-    class_counts = y_train.value_counts()
-
-    # Display counts
-    print(class_counts)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=42)
     
     # Apply SMOTE to balance
     smote = SMOTE(k_neighbors=2, random_state=42)
     X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
     
-    class_counts = y_train_resampled.value_counts()
-
-    # Display counts
-    print(class_counts)
+    # Define parameter grid for GridSearchCV
+    param_grid = {
+        'n_estimators': [50, 100, 200, 1000],
+        'learning_rate': [0.01, 0.1, 0.3],
+        'max_depth': [3, 5, 7]
+    }
     
-    # Calculate the class weights
-    class_weights = class_weight.compute_class_weight('balanced', classes=np.unique(y), y=y)
+    
+    #X_train_selected, X_test_selected = select_features_importance(X_train_resampled,y_train_resampled,X_test,X.columns)
     
     # Initialize XGBoost classifier
     model = xgb.XGBClassifier(
-        scale_pos_weight=class_weights,
-        class_weight='balanced',
         objective="multi:softmax",
         num_class=4,
-        eval_metric=["mlogloss", "auc", "merror"],
-        use_label_encoder=False,
+        eval_metric=["mlogloss", "auc"],
+        learning_rate=0.1,
+        max_depth=7,
         n_estimators=100,
-        max_depth=5,
-        learning_rate=0.0001,
         random_state=42
     )
-
+    
+    '''
+    grid_search = GridSearchCV(estimator=model, param_grid=param_grid, scoring='accuracy', cv=5, verbose=1, n_jobs=-1)
+    '''
     
     # eval_set
-    eval_set = [(X_train, y_train), (X_test, y_test)]
-    evals_result = {}
+    eval_set = [(X_train_resampled, y_train_resampled), (X_test, y_test)]
     
     # Train the model
     model.fit(X_train_resampled, y_train_resampled, eval_set=eval_set, verbose=False)
     
-    importances = model.feature_importances_
+    '''grid_search.fit(X_train, y_train)
+    
+    # Print the best parameters and best score
+    print("Best Parameters: ", grid_search.best_params_)
+    print("Best Cross-validation Accuracy: ", grid_search.best_score_)
+
+    # Test the best model
+    best_model = grid_search.best_estimator_
+    y_pred = best_model.predict(X_test)
+
+    # Evaluate accuracy
+    accuracy = accuracy_score(y_test, y_pred)
+    print(f'Accuracy on Test Set: {accuracy:.4f}')'''
+    
+    '''importances = model.feature_importances_
     #feature_names = df.drop(["label","sperm_id","displacement","time_elapsed","mad","wob","straightness","bcf","angular_displacement","curvature","alh","total_distance","linearity"], axis=1).columns  # Or provide a list if it's a NumPy array
     feature_names = df.drop(["label"], axis=1).columns  # Or provide a list if it's a NumPy array
 
@@ -318,7 +347,7 @@ def XGBoost(df):
     plt.bar(range(len(importances)), importances[indices], align="center")
     plt.xticks(range(len(importances)), ['PCA_1','PCA_2'], rotation=45, ha='right')
     plt.tight_layout()
-    plt.show()
+    plt.show()'''
 
     # Predict
     y_pred = model.predict(X_test)
@@ -332,7 +361,7 @@ def XGBoost(df):
     print("Cross-validation scores:", cv_scores)
     print("Mean accuracy:", cv_scores.mean())
     
-    dump(model, "../models/XGBoost_4c_extended.joblib")
+    #dump(model, "../models/XGBoost_4c_extended.joblib")
 
 
 def tabPFN(df):
@@ -407,13 +436,11 @@ def tabPFN_load():
     
 
 def simple_NN(df):
-    X = df.drop(columns=['label','sperm_id']).values.astype(np.float32)
+    #X = df.drop(columns=['label']).values.astype(np.float32)
+    X = df.drop(["label","displacement","time_elapsed","mad","wob","bcf","angular_displacement","curvature","total_distance"], axis=1)
     y = keras.utils.to_categorical(df['label'].values, 4)  # One-hot encoding for 4 classes
-    
-    '''smote = SMOTE(sampling_strategy='auto', random_state=42)
-    x_resampled, y_resampled = smote.fit_resample(X, y)'''
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
     
     model = keras.Sequential([
         layers.InputLayer(input_shape=(X_train.shape[1],)),  # Input layer for the features
@@ -425,14 +452,18 @@ def simple_NN(df):
         layers.Dense(4, activation='softmax')  # Output layer with 4 classes and softmax activation
     ])
     
+    # SMOTE
+    smote = SMOTE(k_neighbors=1,random_state=42)
+    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+    
     # Compile model
-    model.compile(optimizer=optimizers.Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=optimizers.Adam(learning_rate=0.0001), loss='categorical_crossentropy', metrics=['accuracy'])
     
     early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
     
-  
+
     # Train the model normally
-    history = model.fit(X_train, y_train, epochs=5, batch_size=32, validation_data=(X_test, y_test), callbacks=[early_stopping])
+    history = model.fit(X_train_resampled, y_train_resampled, epochs=50, batch_size=16, validation_data=(X_test, y_test), callbacks=[early_stopping])
     
     '''
     model.layers[0].trainable = True      
@@ -459,11 +490,11 @@ def simple_NN(df):
 
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_4c_30s_preprocessing_v2.csv')
+    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_4c_5s_preprocessing_v2.csv')
     
     #random_forest(df)
     #logistic_regression(df)
-    XGBoost(df)
-    #simple_NN(df)
+    #XGBoost(df)
+    simple_NN(df)
     #tabPFN(df)
     #tabPFN_load()

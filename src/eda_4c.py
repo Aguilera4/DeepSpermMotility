@@ -13,6 +13,8 @@ matplotlib.use("TkAgg")  # Use Tkinter-based backend
 def draw_class_distribution(df):
     # Count the number of samples for each class
     label_counts = df["label"].value_counts()
+    
+    print(label_counts)
 
     # Plot the label distribution
     plt.figure(figsize=(8, 6))
@@ -126,7 +128,7 @@ def get_more_important_features(df):
 
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_4c_30s_preprocessing_v2.csv')
+    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_4c_5s_preprocessing_v2.csv')
     
     # Basic information
     print(df.head())
@@ -135,8 +137,8 @@ if __name__ == "__main__":
     
     # Advanced information
     draw_class_distribution(df)
-    #draw_correlation_matix(df)
+    draw_correlation_matix(df)
     #draw_null_count(df)
     #draw_distribucion_columns(df)
-    #show_outliers(df)
-    #get_more_important_features(df)
+    show_outliers(df)
+    get_more_important_features(df)

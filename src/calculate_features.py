@@ -41,7 +41,11 @@ def calculate_total_distance(trajectory):
     Returns:
         float: Total distance in pixels.
     """
-    return np.round(sum(np.sqrt((trajectory[i][0] - trajectory[i-1][0])**2 + (trajectory[i][1] - trajectory[i-1][1])**2) for i in range(1, len(trajectory))),2)
+    deltas = np.diff(trajectory, axis=0)
+    distances = np.linalg.norm(deltas, axis=1)
+    total_distance = np.sum(distances)
+    
+    return np.round(total_distance,2)
 
 
 ############### Standard measures ###############
@@ -183,7 +187,7 @@ def calculate_WOB(trajectory,fps):
     return np.round(np.divide(VAP, VCL, where=(VCL != 0)),2)
 
 
-def calculate_STR(trajectory):
+def calculate_STR(trajectory,fps):
     """
     STR is the ratio of the straight-line distance to the total path distance (Straightness Ratio).
     
@@ -193,8 +197,8 @@ def calculate_STR(trajectory):
     Returns:
         float: Straightness ratio (0 to 1).
     """
-    displacement = calculate_displacement(trajectory)
-    total_distance = calculate_total_distance(trajectory)
+    displacement = calculate_VSL(trajectory,fps)
+    total_distance = calculate_VAP(trajectory,fps)
     return np.round(np.divide(displacement, total_distance, where=(total_distance != 0)),2)
 
 

@@ -12,13 +12,14 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # Load the YOLOv5 model from the checkpoint
-model = torch.hub.load('ultralytics/yolov5', 'custom', path='best_yolov5x.pt')
+model = torch.hub.load('ultralytics/yolov5', 'custom', path='../YOLO_model/best_yolov5x.pt')
 
 # Video's frame rate
 fps = 50  
 
 # Path to images
-video_train_path = 'data/VISEM_Tracking_extended/train/'
+#video_train_path = '../data/VISEM_Tracking/train/'
+video_train_path = '../data/VISEM_Tracking/individual/'
 
 # List all files and directories in the specified path
 contents = os.listdir(video_train_path)
@@ -63,7 +64,7 @@ def save_df(tracking_data):
     # Save tracking data to a CSV file
     print("save df")
     df = pd.DataFrame(tracking_data, columns=['frame_id', 'video_id', 'track_id', 'class', 'cx', 'cy', 'xmin', 'ymin', 'xmax', 'ymax'])
-    df.to_csv('/results/data_sperm_tracking/sperm_tracking_data.csv', index=False)
+    df.to_csv('../results/data_sperm_tracking/sperm_tracking_data_12.csv', index=False)
 
 def track_sperm():
     """
@@ -78,7 +79,7 @@ def track_sperm():
 
     # Loop to analyse training videos
     for video_index in contents:
-        video_path = 'data/VISEM_Tracking/train/' + video_index + '/' + video_index + '.mp4'
+        video_path = '../data/VISEM_Tracking/train/' + video_index + '/' + video_index + '.mp4'
         # Open video
         cap = cv2.VideoCapture(video_path)
         
@@ -106,7 +107,7 @@ def track_sperm():
             trajectories, tracking_data = update_trajectory(trajectories,tracking_data,tracks,labels,frame_id,video_index)
             
             # First 15 seconds
-            if frame_id == 750:
+            if frame_id == 250:
                 break
             
             frame_id += 1

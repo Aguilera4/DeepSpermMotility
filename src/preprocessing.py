@@ -7,6 +7,7 @@ import pandas as pd
 from calculate_features import *
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.ensemble import IsolationForest
+from sklearn.impute import KNNImputer
 
 def scaler(df):
     scaler = MinMaxScaler()
@@ -46,19 +47,51 @@ def remove_outliers_isolation_forest(df, contamination=0.05):
     print(df_clean.shape)
     
     return df_clean
-       
+
+
+
+def iqr_median_impute(df, exclude_cols=None, max_iter=10):
+    if exclude_cols is None:
+        exclude_cols = []
+
+    df_clean = df.copy()
+    numeric_cols = [col for col in df_clean.select_dtypes(include=[np.number]).columns if col not in exclude_cols]
+
+    for col in numeric_cols:
+        for _ in range(max_iter):
+            Q1 = df_clean[col].quantile(0.25)
+            Q3 = df_clean[col].quantile(0.75)
+            IQR = Q3 - Q1
+            lower = Q1 - 1.5 * IQR
+            upper = Q3 + 1.5 * IQR
+
+            outliers = (df_clean[col] < lower) | (df_clean[col] > upper)
+            if not outliers.any():
+                break
+
+            median = df_clean.loc[~outliers, col].median()
+            df_clean.loc[outliers, col] = median
+
+    return df_clean
     
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features_labelling/dataset_extended_2c_30s.csv')
+    df = pd.read_csv('../results/data_features_labelling/dataset_4c_5s_v2.csv')
     
     df = df.drop('sperm_id', axis=1)
     
     df_cleaned = deleted_null_values(df)
     df_scaler = scaler(df_cleaned)
-    df_cleaned_outliers = remove_outliers_isolation_forest(df_scaler)
+    df_cleaned_outliers = iqr_median_impute(df_scaler, exclude_cols=['label'])
+    
+    
+    #df_cleaned_outliers = remove_outliers_isolation_forest(df_scaler)
+    
+    #imputer = KNNImputer(n_neighbors=2)
+    #df_cleaned_outliers = pd.DataFrame(imputer.fit_transform(df_scaler), columns=df.columns)
+    
     
     df = pd.DataFrame(df_cleaned_outliers, columns=['total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','linearity','wob','straightness','bcf','angular_displacement','curvature','label'])
     
     # Save the updated DataFrame with velocity data
-    df.to_csv('../results/data_features_labelling_preprocessing/dataset_2c_30s_preprocessing_v2.csv', index=False)
+    df.to_csv('../results/data_features_labelling_preprocessing/dataset_4c_5s_preprocessing_v2.csv', index=False)

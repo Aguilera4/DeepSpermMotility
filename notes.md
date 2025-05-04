@@ -20,8 +20,7 @@ Features:
 - Curvilinear Velocity (VCL): Average speed of the sperm (pixels/second).
 - Straight Line Velocity (VSL): VSL is the straight-line distance between the first and last points divided by the total time.
 - Average Path Velocity (VAP): VAP is the average velocity along the average path.
-- Amplitude of Lateral Head Displacement (ALH): Side-to-side movement of the sperm head.
-  - ALH measures the maximum lateral distance that the sperm head deviates from its average trajectory during its movement. In other words, it represents the amplitude of the oscillatory movements of the head as the sperm advances. It is expressed in micrometers (µm). Importance:
+- ALH measures the maximum lateral distance that the sperm head deviates from its average trajectory during its movement. In other words, it represents the amplitude of the oscillatory movements of the head as the sperm advances. It is expressed in micrometers (µm). Importance:
     - A high ALH indicates larger, more vigorous head movements, which may be associated with more active sperm.
     - A low ALH suggests more restricted movement, which may be related to a lower ability to progress and fertilize.
 - Mean Angular Deviation (MAD): MAD measures how much the sperm deviates from its expected straight-line path.
