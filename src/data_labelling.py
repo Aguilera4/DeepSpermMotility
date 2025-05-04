@@ -173,7 +173,7 @@ def data_labelling_4c_v2(df):
         data = pd.concat([data,new_row], ignore_index=True)
 
     # Save the DataFrame
-    data.to_csv('../results/data_features_labelling/dataset_11_v3.csv', index=False)
+    data.to_csv('../results/data_features_labelling/dataset_4c_5s_v2.csv', index=False)
     
 def data_labelling_4c_v3(df):
     # Frame rate of the video (frames per second)
@@ -219,8 +219,8 @@ def data_labelling_4c_v3(df):
     
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_sperm_tracking/sperm_tracking_data_11.csv')
+    df = pd.read_csv('../results/data_sperm_tracking/sperm_tracking_data_5s_v2.csv')
     
-    data_labelling_2c(df)
+    #data_labelling_2c(df)
     #data_labelling_4c(df)
-    #data_labelling_4c_v2(df)
+    data_labelling_4c_v2(df)

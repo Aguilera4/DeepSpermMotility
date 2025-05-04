@@ -125,8 +125,8 @@ def classification_4_classes_v2(trajectory, fps):
         return 2
     else:
         return 3
-    '''
-    # Classify based on thresholds
+        
+        # Classify based on thresholds
     if vsl < 1 and vcl < 1:
         return 3
     elif vsl >= 20 and vcl >= 25 and str >= 0.7:
@@ -137,7 +137,17 @@ def classification_4_classes_v2(trajectory, fps):
         return 2
     else:
         return -1
+    '''
     
+        # Classify based on thresholds
+    if vcl > 25 and vsl > 20:
+        return 0 # Rapidly progressive
+    elif 10 < vcl <= 25 and 5 < vsl <= 20:
+        return 1 # Slowly progressive
+    elif vcl <= 10 and vsl <= 5 and lin <= 0.3:
+        return 2 # Non-progressive
+    else:
+        return 3 # Inmotile
 
 
 def classification_4_classes_v3(trajectory, fps):

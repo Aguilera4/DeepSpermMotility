@@ -242,8 +242,8 @@ def random_forest(df):
     
 def logistic_regression(df):
     # Features and labels
-    X = df.drop(["label","displacement","time_elapsed","mad","wob","bcf","angular_displacement","curvature","total_distance"], axis=1)
-    #X = df.drop(["label"], axis=1).values
+    #X = df.drop(["label","displacement","time_elapsed","mad","wob","bcf","angular_displacement","curvature","total_distance"], axis=1)
+    X = df.drop(["label"], axis=1).values
     y = df["label"]
 
     #pca = PCA(n_components=2)
@@ -274,8 +274,8 @@ def logistic_regression(df):
 
 def XGBoost(df):
     # Features and labels
-    X = df.drop(["label","displacement","time_elapsed","mad","wob","bcf","angular_displacement","curvature","total_distance"], axis=1)
-    #X = df.drop(["label"], axis=1)
+    #X = df.drop(["label","displacement","time_elapsed","mad","wob","bcf","angular_displacement","curvature","total_distance"], axis=1)
+    X = df.drop(["label"], axis=1)
     y = LabelEncoder().fit_transform(df['label'])
 
     '''# PCA
@@ -436,8 +436,8 @@ def tabPFN_load():
     
 
 def simple_NN(df):
-    #X = df.drop(columns=['label']).values.astype(np.float32)
-    X = df.drop(["label","displacement","time_elapsed","mad","wob","bcf","angular_displacement","curvature","total_distance"], axis=1)
+    X = df.drop(columns=['label']).values.astype(np.float32)
+    #X = df.drop(["label","displacement","time_elapsed","mad","wob","bcf","angular_displacement","curvature","total_distance"], axis=1)
     y = keras.utils.to_categorical(df['label'].values, 4)  # One-hot encoding for 4 classes
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
@@ -453,17 +453,17 @@ def simple_NN(df):
     ])
     
     # SMOTE
-    smote = SMOTE(k_neighbors=1,random_state=42)
+    smote = SMOTE(k_neighbors=2,random_state=42)
     X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
     
     # Compile model
-    model.compile(optimizer=optimizers.Adam(learning_rate=0.0001), loss='categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=optimizers.Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
     
     early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
     
 
     # Train the model normally
-    history = model.fit(X_train_resampled, y_train_resampled, epochs=50, batch_size=16, validation_data=(X_test, y_test), callbacks=[early_stopping])
+    history = model.fit(X_train_resampled, y_train_resampled, epochs=50, batch_size=32, validation_data=(X_test, y_test), callbacks=[early_stopping])
     
     '''
     model.layers[0].trainable = True      
@@ -493,8 +493,8 @@ if __name__ == "__main__":
     df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_4c_5s_preprocessing_v2.csv')
     
     #random_forest(df)
-    #logistic_regression(df)
+    logistic_regression(df)
     #XGBoost(df)
-    simple_NN(df)
+    #simple_NN(df)
     #tabPFN(df)
     #tabPFN_load()
