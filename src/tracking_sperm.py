@@ -71,7 +71,7 @@ def track_sperm():
     Process to detect information about sperm for each video in train folder.
     """
     # Load tracker model
-    tracker = Sort() 
+    tracker = Sort(max_age=50, min_hits=20, iou_threshold=0.1) 
     
     # Variables
     tracking_data = []

@@ -42,13 +42,13 @@ def data_labelling_2c(df):
         curvature = calculate_curvature(trajectory_path)
         
         # Label
-        label = classification_4_classes(trajectory_path, fps, straightness_threshold=0.8)
+        label = classification_2_classes(trajectory_path, fps)
 
         new_row = pd.DataFrame([[track_id,total_distance,displacement,time_elapsed,vcl,vsl,vap,alh,mad,linearity,wob,straightness,bcf,angular_displacement,curvature,label]], columns=data.columns)
         data = pd.concat([data,new_row], ignore_index=True)
 
     # Save the DataFrame
-    data.to_csv('../results/data_features_labelling/dataset_2c.csv', index=False)
+    data.to_csv('../results/data_features_labelling/dataset_2c_11.csv', index=False)
     
 def data_labelling_3c(df):
     # Frame rate of the video (frames per second)
@@ -125,7 +125,7 @@ def data_labelling_4c(df):
         curvature = calculate_curvature(trajectory_path)
         
         # Label
-        label = classification_4_classes(trajectory_path, fps, straightness_threshold=0.8)
+        label = classification_4_classes(trajectory_path, fps)
 
         new_row = pd.DataFrame([[track_id,total_distance,displacement,time_elapsed,vcl,vsl,vap,alh,mad,linearity,wob,straightness,bcf,angular_displacement,curvature,label]], columns=data.columns)
         data = pd.concat([data,new_row], ignore_index=True)
@@ -173,7 +173,7 @@ def data_labelling_4c_v2(df):
         data = pd.concat([data,new_row], ignore_index=True)
 
     # Save the DataFrame
-    data.to_csv('../results/data_features_labelling/dataset_4c_5s_v2.csv', index=False)
+    data.to_csv('../results/data_features_labelling/dataset_11_v3.csv', index=False)
     
 def data_labelling_4c_v3(df):
     # Frame rate of the video (frames per second)
@@ -208,7 +208,7 @@ def data_labelling_4c_v3(df):
         curvature = calculate_curvature(trajectory_path)
         
         # Label
-        label = classification_4_classes_v4(trajectory_path, fps, straightness_threshold=0.8)
+        label = classification_4_classes_v4(trajectory_path, fps)
 
         new_row = pd.DataFrame([[track_id,total_distance,displacement,time_elapsed,vcl,vsl,vap,alh,mad,linearity,wob,straightness,bcf,angular_displacement,curvature,label]], columns=data.columns)
         data = pd.concat([data,new_row], ignore_index=True)
@@ -219,8 +219,8 @@ def data_labelling_4c_v3(df):
     
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_sperm_tracking/sperm_tracking_data_5s.csv')
+    df = pd.read_csv('../results/data_sperm_tracking/sperm_tracking_data_11.csv')
     
-    #data_labelling_2c(df)
+    data_labelling_2c(df)
     #data_labelling_4c(df)
-    data_labelling_4c_v2(df)
+    #data_labelling_4c_v2(df)

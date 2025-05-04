@@ -76,7 +76,7 @@ def iqr_median_impute(df, exclude_cols=None, max_iter=10):
     
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features_labelling/dataset_4c_5s_v2.csv')
+    df = pd.read_csv('../results/data_features_labelling/dataset_2c_11.csv')
     
     df = df.drop('sperm_id', axis=1)
     
@@ -94,4 +94,4 @@ if __name__ == "__main__":
     df = pd.DataFrame(df_cleaned_outliers, columns=['total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','linearity','wob','straightness','bcf','angular_displacement','curvature','label'])
     
     # Save the updated DataFrame with velocity data
-    df.to_csv('../results/data_features_labelling_preprocessing/dataset_4c_5s_preprocessing_v2.csv', index=False)
+    df.to_csv('../results/data_features_labelling_preprocessing/dataset_2c_11_preprocessing.csv', index=False)

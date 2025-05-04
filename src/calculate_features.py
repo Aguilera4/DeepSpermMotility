@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.ndimage import uniform_filter1d
 
 ############### Basic measures ###############
 
@@ -95,21 +96,19 @@ def calculate_VAP(trajectory,fps):
     # Check if there is more than one point in the trajectory
     if len(trajectory) < 2: 
         return 0
-
+    
     x = [x[0] for x in trajectory]
     y = [x[1] for x in trajectory]
+
+    x_smooth = uniform_filter1d(x, size=5)
+    y_smooth = uniform_filter1d(y, size=5)
     
-    time = np.arange(len(trajectory))
-    time_fine = np.linspace(time[0], time[-1], num=len(time) * 10)
-    
-    x_fine = np.interp(time_fine, time, x)
-    y_fine = np.interp(time_fine, time, y)
-    distances = np.sqrt(np.diff(x_fine)**2 + np.diff(y_fine)**2)
-    smooth_path_length = np.sum(distances)
-    
+    distances = np.sqrt(np.diff(x_smooth)**2 + np.diff(y_smooth)**2)
+    total_distance = np.sum(distances)
+
     time_elapsed = calculate_time_elapsed(trajectory,fps)
 
-    return  np.round(np.divide(smooth_path_length, time_elapsed, where=(time_elapsed != 0)),2)
+    return  np.round(np.divide(total_distance, time_elapsed, where=(time_elapsed != 0)),2)
 
 
 def calculate_ALH(trajectory):
@@ -197,9 +196,9 @@ def calculate_STR(trajectory,fps):
     Returns:
         float: Straightness ratio (0 to 1).
     """
-    displacement = calculate_VSL(trajectory,fps)
-    total_distance = calculate_VAP(trajectory,fps)
-    return np.round(np.divide(displacement, total_distance, where=(total_distance != 0)),2)
+    vsl = calculate_VSL(trajectory,fps)
+    vap = calculate_VAP(trajectory,fps)
+    return np.round(np.divide(vsl, vap, where=(vap != 0)),2)
 
 
 def calculate_BCF(trajectory, fps):

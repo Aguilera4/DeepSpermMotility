@@ -257,7 +257,7 @@ def logistic_regression(df):
     X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
     
     # Train a Logistic regression model
-    clf = LogisticRegression(multi_class='multinomial', solver='newton-cg', max_iter=1000)
+    clf = LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=100)
     clf.fit(X_train_resampled, y_train_resampled)
 
     # Evaluate the model

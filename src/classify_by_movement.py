@@ -1,7 +1,7 @@
 import numpy as np
 from calculate_features import *
 
-def is_progressive(trajectory, fps, velocity_threshold=10, straightness_threshold=0.8):
+def classification_2_classes(trajectory, fps):
     """
     Determine if a sperm is progressive or non-progressive.
     
@@ -21,7 +21,7 @@ def is_progressive(trajectory, fps, velocity_threshold=10, straightness_threshol
     straightness_ratio = calculate_STR(trajectory,fps)
     
     # Classify based on thresholds
-    if velocity >= velocity_threshold and straightness_ratio >= straightness_threshold:
+    if velocity >= 25 and straightness_ratio >= 0.8:
         return 1  # Progressive
     else:
         return 0  # Non-progressive
@@ -56,7 +56,7 @@ def classification_3_classes(trajectory, fps, straightness_threshold=0.8):
         return 2  # Inmotile - Hiperactive
        
 
-def classification_4_classes(trajectory, fps, straightness_threshold=0.8):
+def classification_4_classes(trajectory, fps):
     """
     Determine if a sperm is Linear mean swim, Circular swim, Hyperactivated, Inmotile.
     
@@ -74,11 +74,11 @@ def classification_4_classes(trajectory, fps, straightness_threshold=0.8):
     str = calculate_STR(trajectory,fps)
     
     # Classify based on thresholds
-    if vcl >= 25 and str >= straightness_threshold:
+    if vcl >= 25 and str >= 0.8:
         return 0  # Linear mean swim
-    elif vcl >= 5 and vcl < 25 and str >= straightness_threshold:
+    elif vcl >= 5 and vcl < 25 and str >= 0.8:
         return 1 # Circular swim
-    elif vcl < 5 and str >= straightness_threshold:
+    elif vcl < 5 and str >= 0.8:
         return 2 # Hyperactive
     else:
         return 3  # Inmotile
@@ -115,19 +115,32 @@ def classification_4_classes_v2(trajectory, fps):
         return 2 # Hyperactive
     else:
         return 3  # Inmotile
-    '''
-    # Classify based on thresholds
-    if vsl >= 20 and vcl >= 25 and str >= 0.2:
+        
+         # Classify based on thresholds
+    if vsl >= 20 and vcl >= 25 and str >= 0.6:
         return 0
-    elif 5 <= vcl < 25 and 5 <= vsl < 40:
+    elif 5 <= vcl < 25 and 5 <= vsl < 20:
         return 1
     elif vsl < 5 and vcl > 0:
         return 2
     else:
         return 3
+    '''
+    # Classify based on thresholds
+    if vsl < 1 and vcl < 1:
+        return 3
+    elif vsl >= 20 and vcl >= 25 and str >= 0.7:
+        return 0
+    elif 10 <= vcl < 25 and 5 <= vsl < 20:
+        return 1
+    elif vsl < 5 and vcl > 0:
+        return 2
+    else:
+        return -1
+    
 
 
-def classification_4_classes_v3(trajectory, fps, straightness_threshold=0.8):
+def classification_4_classes_v3(trajectory, fps):
     """
     Determine if a sperm is Linear mean swim, Circular swim, Hyperactivated, Inmotile.
     
