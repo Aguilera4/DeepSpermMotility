@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from classify_by_movement import *
 import pandas as pd
-from calculate_features import *
+from functions_features import *
 import cv2
 import torch
 from sort.sort import *

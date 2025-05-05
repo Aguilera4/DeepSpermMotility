@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from classify_by_movement import *
 import pandas as pd
-from calculate_features import *
+from functions_features import *
 from joblib import dump
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_curve, auc, roc_auc_score
 from sklearn.model_selection import train_test_split, cross_val_score

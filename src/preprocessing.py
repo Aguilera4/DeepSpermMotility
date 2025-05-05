@@ -4,14 +4,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from classify_by_movement import *
 import pandas as pd
-from calculate_features import *
+from functions_features import *
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.ensemble import IsolationForest
 from sklearn.impute import KNNImputer
 
 def scaler(df):
     scaler = MinMaxScaler()
-    columns=['total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','linearity','wob','straightness','bcf','angular_displacement','curvature']
+    columns=['total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','lin','wob','str','bcf']
     df[columns] = scaler.fit_transform(df[columns].select_dtypes(include=['float64', 'int64']))
     return df
     
@@ -35,7 +35,7 @@ def deleted_null_values(df):
 
 
 def remove_outliers_isolation_forest(df, contamination=0.05):
-    columns=['total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','linearity','wob','straightness','bcf','angular_displacement','curvature']
+    columns=['total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','lin','wob','str','bcf']
     
     iso = IsolationForest(contamination=contamination, random_state=42)
     preds = iso.fit_predict(df[columns])
@@ -76,22 +76,14 @@ def iqr_median_impute(df, exclude_cols=None, max_iter=10):
     
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features_labelling/dataset_4c_5s_v2.csv')
+    df = pd.read_csv('../results/data_features_labelling/dataset_3c_11.csv')
     
     df = df.drop('sperm_id', axis=1)
-    
     df_cleaned = deleted_null_values(df)
     df_scaler = scaler(df_cleaned)
     df_cleaned_outliers = iqr_median_impute(df_scaler, exclude_cols=['label'])
     
-    
-    #df_cleaned_outliers = remove_outliers_isolation_forest(df_scaler)
-    
-    #imputer = KNNImputer(n_neighbors=2)
-    #df_cleaned_outliers = pd.DataFrame(imputer.fit_transform(df_scaler), columns=df.columns)
-    
-    
-    df = pd.DataFrame(df_cleaned_outliers, columns=['total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','linearity','wob','straightness','bcf','angular_displacement','curvature','label'])
+    df = pd.DataFrame(df_cleaned_outliers, columns=['total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','lin','wob','str','bcf','label'])
     
     # Save the updated DataFrame with velocity data
-    df.to_csv('../results/data_features_labelling_preprocessing/dataset_4c_5s_preprocessing_v2.csv', index=False)
+    df.to_csv('../results/data_features_labelling_preprocessing/dataset_3c_11_preprocessing.csv', index=False)

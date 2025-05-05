@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from classify_by_movement import *
 import pandas as pd
-from calculate_features import *
+from functions_features import *
 from sklearn.preprocessing import LabelEncoder
 import xgboost as xgb
 
@@ -128,7 +128,7 @@ def get_more_important_features(df):
 
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_4c_5s_preprocessing_v2.csv')
+    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_3c_11_preprocessing.csv')
     
     # Basic information
     print(df.head())

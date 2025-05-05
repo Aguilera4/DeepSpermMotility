@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from classify_by_movement import *
 import pandas as pd
-from calculate_features import *
+from functions_features import *
 from sklearn.model_selection import GridSearchCV
 from joblib import dump
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_curve, auc, roc_auc_score
@@ -219,15 +219,16 @@ def random_forest(df):
     X = df.drop(["label"], axis=1).values
     y = df["label"]
 
-    pca = PCA(n_components=2)
-    X_pca = pca.fit_transform(X)
-
     # Split data into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
     
+    # Apply SMOTE to balance
+    smote = SMOTE(k_neighbors=2, random_state=42)
+    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+    
     # Train a Random Forest classifier
     clf = RandomForestClassifier(n_estimators=100, random_state=42, max_depth=10, class_weight='balanced')
-    clf.fit(X_train, y_train)
+    clf.fit(X_train_resampled, y_train_resampled)
 
     # Evaluate the model
     y_pred = clf.predict(X_test)
@@ -236,13 +237,11 @@ def random_forest(df):
     show_metrics(y_test,y_pred)
     draw_confusion_matrix(y_test,y_pred)
     
-    dump(clf, "../models/random_forest_4c.joblib")
-
-
+    #dump(clf, "../models/random_forest_4c.joblib")
     
 def logistic_regression(df):
     # Features and labels
-    #X = df.drop(["label","displacement","time_elapsed","mad","wob","bcf","angular_displacement","curvature","total_distance"], axis=1)
+    #X = df.drop(["label","displacement","time_elapsed","mad","wob","bcf","total_distance"], axis=1)
     X = df.drop(["label"], axis=1).values
     y = df["label"]
 
@@ -274,7 +273,7 @@ def logistic_regression(df):
 
 def XGBoost(df):
     # Features and labels
-    #X = df.drop(["label","displacement","time_elapsed","mad","wob","bcf","angular_displacement","curvature","total_distance"], axis=1)
+    #X = df.drop(["label","displacement","time_elapsed","mad","wob","bcf","total_distance"], axis=1)
     X = df.drop(["label"], axis=1)
     y = LabelEncoder().fit_transform(df['label'])
 
@@ -335,7 +334,7 @@ def XGBoost(df):
     print(f'Accuracy on Test Set: {accuracy:.4f}')'''
     
     '''importances = model.feature_importances_
-    #feature_names = df.drop(["label","sperm_id","displacement","time_elapsed","mad","wob","straightness","bcf","angular_displacement","curvature","alh","total_distance","linearity"], axis=1).columns  # Or provide a list if it's a NumPy array
+    #feature_names = df.drop(["label","sperm_id","displacement","time_elapsed","mad","wob","str","bcf","alh","total_distance","lin"], axis=1).columns  # Or provide a list if it's a NumPy array
     feature_names = df.drop(["label"], axis=1).columns  # Or provide a list if it's a NumPy array
 
     # Sort by importance
@@ -369,7 +368,7 @@ def tabPFN(df):
     df['label'] = label_encoder.fit_transform(df['label'])
     
     # Features and labels
-    X = df.drop(["label","sperm_id","displacement","time_elapsed","mad","wob","straightness","bcf","angular_displacement","curvature"], axis=1).values.astype(np.float32)
+    X = df.drop(["label","sperm_id","displacement","time_elapsed","mad","wob","str","bcf"], axis=1).values.astype(np.float32)
     #X = df.drop(["label","sperm_id"], axis=1).values.astype(np.float32)
     y = df["label"]
     
@@ -437,7 +436,7 @@ def tabPFN_load():
 
 def simple_NN(df):
     X = df.drop(columns=['label']).values.astype(np.float32)
-    #X = df.drop(["label","displacement","time_elapsed","mad","wob","bcf","angular_displacement","curvature","total_distance"], axis=1)
+    #X = df.drop(["label","displacement","time_elapsed","mad","wob","bcf","total_distance"], axis=1)
     y = keras.utils.to_categorical(df['label'].values, 4)  # One-hot encoding for 4 classes
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
@@ -488,13 +487,15 @@ def simple_NN(df):
     
     dump(model, "../models/simple_NN_4c_extended.joblib")
 
+
+
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
     df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_4c_5s_preprocessing_v2.csv')
     
     #random_forest(df)
-    logistic_regression(df)
+    #logistic_regression(df)
     #XGBoost(df)
-    #simple_NN(df)
+    simple_NN(df)
     #tabPFN(df)
     #tabPFN_load()
