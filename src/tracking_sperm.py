@@ -64,7 +64,7 @@ def save_df(tracking_data):
     # Save tracking data to a CSV file
     print("save df")
     df = pd.DataFrame(tracking_data, columns=['frame_id', 'video_id', 'track_id', 'class', 'cx', 'cy', 'xmin', 'ymin', 'xmax', 'ymax'])
-    df.to_csv('../results/data_sperm_tracking/sperm_tracking_data_12.csv', index=False)
+    df.to_csv('../results/data_sperm_tracking/sperm_tracking_data_35.csv', index=False)
 
 def track_sperm():
     """
@@ -107,7 +107,7 @@ def track_sperm():
             trajectories, tracking_data = update_trajectory(trajectories,tracking_data,tracks,labels,frame_id,video_index)
             
             # First 15 seconds
-            if frame_id == 250:
+            if frame_id == 750:
                 break
             
             frame_id += 1

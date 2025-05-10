@@ -32,6 +32,8 @@ Features:
 - Angular Displacement: Change in direction over time (useful for detecting circular motion).
 - Curvature: Measures how curved the trajectory is.
 
+Articulo: Multi-Target Tracking of Human Spermatozoa in Phase-Contrast Microscopy Image Sequences using a Hybrid Dynamic Bayesian Network
+Especifica que es necesario filtrar aquellos espermas que son visualizados en 25 frames consecutivos
 
 Model Classify:
 - 2 classes: progressive and non-progressive

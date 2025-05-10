@@ -1,16 +1,18 @@
 import pandas as pd
+import numpy as np
+from sklearn.tree import DecisionTreeClassifier, export_text
+import seaborn as sns
+import matplotlib.pyplot as plt
 
-
-df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_4c_30s_preprocessing.csv')
+df = pd.read_csv('../results/data_features/dataset_30s_v2.csv')
 
 from sklearn.cluster import KMeans
 
-kmeans = KMeans(n_clusters=4, random_state=0)
+kmeans = KMeans(n_clusters=3, init='k-means++', n_init=10, max_iter=300, tol=0.0001, random_state=42)
 
+df_copy = df.loc[:,  ['vcl','vsl','vap','alh','mad','lin','wob','str','bcf']]
 
-df_copy = df.loc[:, ['vcl','vsl','linearity','vap','alh']]
-
-df['label'] = kmeans.fit_predict(df_copy)
+df_copy['label'] = kmeans.fit_predict(df_copy)
 
 
 '''df[df['cluster'] == 0].to_csv("cluster0.csv")
@@ -31,5 +33,31 @@ import matplotlib.pyplot as plt
 sns.scatterplot(data=df,x='pca1',y='pca2',hue='cluster')
 plt.show()'''
 
-df.to_csv("dataset_clustering_4c_30s.csv", index=False)
+#df.to_csv("dataset_clustering_4c_30s.csv", index=False)
 
+cluster_stats = df_copy.groupby('label').agg(['mean', 'std', 'min', 'max'])
+print(cluster_stats)
+
+'''sns.pairplot(df_copy, hue='label', diag_kind='kde')
+plt.show()'''
+
+# Entrenamiento de un árbol de decisión para extraer reglas
+features = ['vcl','vsl','vap','alh','mad','lin','wob','str','bcf']
+X = df_copy[features]
+y = df_copy['label']
+
+tree = DecisionTreeClassifier(
+    criterion='gini',             # Gini impurity
+    max_depth=2,                  # Limit tree depth
+    min_samples_split=10,         # Minimum samples to split a node
+    min_samples_leaf=5,           # Minimum samples at a leaf node
+    max_features='sqrt',          # Use square root of features for splits
+    random_state=42,              # Ensure reproducibility
+    class_weight='balanced'       # Handle class imbalance (if any)
+    )
+tree.fit(X, y)
+
+# Mostrar reglas extraídas
+rules = export_text(tree, feature_names=features)
+print("Reglas de clasificación extraídas del árbol de decisión:")
+print(rules)

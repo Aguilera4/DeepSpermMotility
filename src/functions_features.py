@@ -124,14 +124,16 @@ def calculate_ALH(trajectory):
     # Calculate the average path (straight line from start to end)
     start_x, start_y = trajectory[0]
     end_x, end_y = trajectory[-1]
+
     lateral_displacements = []
     for (x, y) in trajectory:
-        # Distance from the point to the straight line
+        # Distance perpendicular to straight line
         numerator = np.abs((end_y - start_y) * x - (end_x - start_x) * y + end_x * start_y - end_y * start_x)
         denominator = np.sqrt((end_y - start_y)**2 + (end_x - start_x)**2)
-        lateral_displacements.append(np.divide(numerator, denominator, where=(denominator != 0)))
-    return np.round(np.max(lateral_displacements),2)
+        distance = numerator / denominator if denominator != 0 else 0
+        lateral_displacements.append(distance)
 
+    return np.round((np.max(lateral_displacements) - np.min(lateral_displacements)) / 2, 2)
 
 def calculate_MAD(trajectory):
     """

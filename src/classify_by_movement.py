@@ -31,15 +31,54 @@ def classification_3_classes(sperm):
         int: 0 -> Progressive motility, 1 -> Non-pogressive, 2 -> Inmotile
     """
     
-    # Classify based on thresholds
+    '''# Classify based on thresholds
     if sperm['vcl'] >= 25:
         return 0  # Progressive motility
     elif sperm['vcl'] >= 5 and sperm['vcl'] < 25:
         return 1 # Non-pogressive
     else:
-        return 2  # Inmotile
-       
-
+        return 2  # Inmotile'''
+    
+    '''# Classify based on thresholds
+    if sperm['vcl'] >= 25 and (sperm['lin'] >= 0.5 or sperm['alh'] >= 80 or sperm['bcf'] >= 3 or (sperm['vsl'] > 20 and sperm['lin'] >= 0.5 )):
+        return 0  # Progressive motility
+    elif (sperm['vcl'] <= 15 and sperm['vsl'] <= 5 and sperm['lin'] <= 0.5) or (sperm['vcl'] >= 5 and sperm['vcl'] < 25 and sperm['lin'] < 0.5):
+        return 2
+    elif (sperm['vcl'] >= 5 and sperm['vcl'] < 25) or sperm['lin'] < 0.5:
+        return 1 # Non-pogressive
+    else:
+        return 2  # Inmotile'''
+    
+    '''# Classify based on thresholds
+    if sperm['vap'] <= 32.98: 
+        if sperm['vcl'] <= 46.32: 
+            return 2
+        else:
+            if sperm['mad'] <= 1.59: 
+                return 0
+            else:
+                return 2
+    else:
+        if sperm['vap'] <= 87.40: 
+            if sperm['vsl'] <= 82.38: 
+                return 1
+            else:
+                return 0
+        else:
+            if sperm['vcl'] <= 107.49:
+                return 1 
+            else:
+                return 0
+                '''
+    # Classify based on thresholds
+    if sperm['vsl'] <= 5.12:
+        return 0
+    else:
+        if sperm['wob'] <= 0.89: 
+            return 1
+        else:
+            return 2
+                
 def classification_4_classes(sperm):
     """
     Determine if a sperm is Linear mean swim, Circular swim, Hyperactivated, Inmotile.

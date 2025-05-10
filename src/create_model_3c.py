@@ -48,8 +48,8 @@ def draw_confusion_matrix(y_test,y_pred):
     cm = confusion_matrix(y_test, y_pred)
     # Create a heatmap
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
-                xticklabels=['Linear mean swim', 'Circular swim', 'Hyperactivated', 'Inmotile'], 
-                yticklabels=['Linear mean swim', 'Circular swim', 'Hyperactivated', 'Inmotile'])
+                xticklabels=['Progressive motility', 'Non-pogressive', 'Inmotile'], 
+                yticklabels=['Progressive motility', 'Non-pogressive', 'Inmotile'])
 
     # Add labels and title
     plt.xlabel('Predicted label')
@@ -223,7 +223,7 @@ def random_forest(df):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
     
     # Apply SMOTE to balance
-    smote = SMOTE(k_neighbors=2, random_state=42)
+    smote = SMOTE(k_neighbors=4, random_state=42)
     X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
     
     # Train a Random Forest classifier
@@ -252,7 +252,7 @@ def logistic_regression(df):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=42)
     
     # Apply SMOTE to balance
-    smote = SMOTE(k_neighbors=2, random_state=42)
+    smote = SMOTE(k_neighbors=5, random_state=42)
     X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
     
     # Train a Logistic regression model
@@ -304,8 +304,8 @@ def XGBoost(df):
         num_class=3,
         eval_metric=["mlogloss", "auc"],
         learning_rate=0.1,
-        max_depth=7,
-        n_estimators=100,
+        max_depth=5,
+        n_estimators=1000,
         random_state=42
     )
     
@@ -368,18 +368,13 @@ def tabPFN(df):
     df['label'] = label_encoder.fit_transform(df['label'])
     
     # Features and labels
-    X = df.drop(["label","sperm_id","displacement","time_elapsed","mad","wob","str","bcf"], axis=1).values.astype(np.float32)
-    #X = df.drop(["label","sperm_id"], axis=1).values.astype(np.float32)
+    #X = df.drop(["label","displacement","time_elapsed","mad","wob","str","bcf"], axis=1).values.astype(np.float32)
+    X = df.drop(["label"], axis=1)
     y = df["label"]
     
     # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
     
-    '''
-    # Apply RandomUnderSampler to balance
-    rus = RandomUnderSampler(random_state=42)
-    X_train_resampled, y_train_resampled = rus.fit_resample(X_train, y_train)
-    '''
     # Apply SMOTE to balance
     smote = SMOTE(k_neighbors=2, random_state=42)
     X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
@@ -387,7 +382,7 @@ def tabPFN(df):
     # Initialize a classifier
     clf_base =  TabPFNClassifier(
         ignore_pretraining_limits=True,
-        inference_config = {"SUBSAMPLE_SAMPLES": 10000} # Needs to be set low so that not OOM on fitting intermediate nodes
+        inference_config = {"SUBSAMPLE_SAMPLES": 1000} # Needs to be set low so that not OOM on fitting intermediate nodes
     )
     
     tabpfn_tree_clf = RandomForestTabPFNClassifier(
@@ -410,7 +405,7 @@ def tabPFN(df):
     print("Accuracy", accuracy_score(y_test, predictions))
 
 
-    dump(tabpfn_tree_clf, "../models/TabPFN_4c_15s_extended.joblib")
+    dump(tabpfn_tree_clf, "../models/TabPFN_3c_15s_extended.joblib")
     
     
 def tabPFN_load():
@@ -456,7 +451,7 @@ def simple_NN(df):
     X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
     
     # Compile model
-    model.compile(optimizer=optimizers.Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=optimizers.Adam(learning_rate=0.0001), loss='categorical_crossentropy', metrics=['accuracy'])
     
     early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
     
@@ -485,13 +480,13 @@ def simple_NN(df):
     y_pred = (model.predict(X_test) > 0.5).astype("int32")
     print(classification_report(y_test, y_pred))
     
-    dump(model, "../models/simple_NN_4c_extended.joblib")
+    #dump(model, "../models/simple_NN_4c_extended.joblib")
 
 
 
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_3c_5s_preprocessing_v2.csv')
+    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_3c_30s_preprocessing_v2.csv')
     
     #random_forest(df)
     logistic_regression(df)
