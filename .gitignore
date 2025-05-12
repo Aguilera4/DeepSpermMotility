@@ -8,7 +8,7 @@ YOLO_model/
 VISEM-Tracking/
 data/
 datasets/
-data.zip
 results/
+data.zip
 models/
 results_track_video/
