@@ -56,6 +56,6 @@ def calculate_features(df,name_file):
     
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_sperm_tracking/sperm_tracking_data_extended_30s_v2.csv')
+    df = pd.read_csv('../results/data_sperm_tracking/sperm_tracking_data_22.csv')
     
-    calculate_features(df,'dataset_extended_30s_v2')
+    calculate_features(df,'dataset_22_v3')

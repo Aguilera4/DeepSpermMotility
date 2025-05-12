@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.ndimage import uniform_filter1d
+from scipy.interpolate import CubicSpline
 
 ############### Basic measures ###############
 
@@ -42,8 +43,8 @@ def calculate_total_distance(trajectory):
     Returns:
         float: Total distance in pixels.
     """
-    deltas = np.diff(trajectory, axis=0)
-    distances = np.linalg.norm(deltas, axis=1)
+    deltas = np.diff(trajectory, axis=0) # Calculate the difference between each consecutive pair of points
+    distances = np.linalg.norm(deltas, axis=1) # Calculate the euclidian distance
     total_distance = np.sum(distances)
     
     return np.round(total_distance,2)
@@ -99,12 +100,28 @@ def calculate_VAP(trajectory,fps):
     
     x = [x[0] for x in trajectory]
     y = [x[1] for x in trajectory]
-
-    x_smooth = uniform_filter1d(x, size=5)
+    
+    time = np.arange(len(trajectory)) / fps
+    
+    # Create cubic splines for both x and y coordinates
+    cs_x = CubicSpline(time, x)
+    cs_y = CubicSpline(time, y)
+    
+    # Derivative of the spline to calculate velocity
+    velocity_x = cs_x.derivative()
+    velocity_y = cs_y.derivative()
+    
+    # Calculate velocity at each time point
+    velocities = np.sqrt(velocity_x(time)**2 + velocity_y(time)**2)
+    
+    # Calculate total distance (integrating velocity over time)
+    total_distance = np.sum(velocities / fps)  # Distance = velocity * time (small time intervals)
+    
+    '''x_smooth = uniform_filter1d(x, size=5)
     y_smooth = uniform_filter1d(y, size=5)
     
     distances = np.sqrt(np.diff(x_smooth)**2 + np.diff(y_smooth)**2)
-    total_distance = np.sum(distances)
+    total_distance = np.sum(distances)'''
 
     time_elapsed = calculate_time_elapsed(trajectory,fps)
 
