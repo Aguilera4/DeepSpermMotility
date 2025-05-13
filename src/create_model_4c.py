@@ -303,9 +303,9 @@ def XGBoost(df):
         objective="multi:softmax",
         num_class=4,
         eval_metric=["mlogloss", "auc"],
-        learning_rate=0.1,
+        learning_rate=0.01,
         max_depth=7,
-        n_estimators=100,
+        n_estimators=1000,
         random_state=42
     )
     
@@ -368,8 +368,8 @@ def tabPFN(df):
     df['label'] = label_encoder.fit_transform(df['label'])
     
     # Features and labels
-    X = df.drop(["label","sperm_id","displacement","time_elapsed","mad","wob","str","bcf"], axis=1).values.astype(np.float32)
-    #X = df.drop(["label","sperm_id"], axis=1).values.astype(np.float32)
+    #X = df.drop(["label","displacement","time_elapsed","mad","wob","str","bcf"], axis=1).values.astype(np.float32)
+    X = df.drop(["label"], axis=1).values.astype(np.float32)
     y = df["label"]
     
     # Train-test split
@@ -387,7 +387,7 @@ def tabPFN(df):
     # Initialize a classifier
     clf_base =  TabPFNClassifier(
         ignore_pretraining_limits=True,
-        inference_config = {"SUBSAMPLE_SAMPLES": 10000} # Needs to be set low so that not OOM on fitting intermediate nodes
+        inference_config = {"SUBSAMPLE_SAMPLES": 1000} # Needs to be set low so that not OOM on fitting intermediate nodes
     )
     
     tabpfn_tree_clf = RandomForestTabPFNClassifier(
@@ -491,8 +491,8 @@ def simple_NN(df):
 
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_4c_5s_preprocessing_v2.csv')
-    
+    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_extended_4c_30s_preprocessing_v2.csv')
+
     #random_forest(df)
     #logistic_regression(df)
     #XGBoost(df)
