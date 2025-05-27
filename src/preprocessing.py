@@ -12,7 +12,7 @@ from sklearn.impute import KNNImputer
 def scaler(df):
     scaler = MinMaxScaler()
     columns=['total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','lin','wob','str','bcf']
-    df[columns] = scaler.fit_transform(df[columns].select_dtypes(include=['float64', 'int64']))
+    df[columns] = np.round(scaler.fit_transform(df[columns].select_dtypes(include=['float64', 'int64'])), 4)
     return df
     
     
@@ -76,7 +76,7 @@ def iqr_median_impute(df, exclude_cols=None, max_iter=10):
     
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features_labelling/dataset_4c_15s_v2.csv')
+    df = pd.read_csv('../results/data_features_labelling/dataset_4c_30s.csv')
     
     df = df.drop('sperm_id', axis=1)
     df_cleaned = deleted_null_values(df)
@@ -86,4 +86,4 @@ if __name__ == "__main__":
     df = pd.DataFrame(df_cleaned_outliers, columns=['total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','lin','wob','str','bcf','label'])
     
     # Save the updated DataFrame with velocity data
-    df.to_csv('../results/data_features_labelling_preprocessing/dataset_4c_15s_preprocessing_v2.csv', index=False)
+    df.to_csv('../results/data_features_labelling_preprocessing/dataset_4c_30s_preprocessing.csv', index=False)
