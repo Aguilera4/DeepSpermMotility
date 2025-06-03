@@ -19,7 +19,7 @@ fps = 50
 
 # Path to images
 #video_train_path = '../data/VISEM_Tracking/train/'
-video_train_path = '../data/ViSEM_Tracking_extended/train/'
+video_train_path = '../data/VISEM_Tracking/individual/'
 
 # List all files and directories in the specified path
 contents = os.listdir(video_train_path)
@@ -71,7 +71,7 @@ def track_sperm():
     Process to detect information about sperm for each video in train folder.
     """
     # Load tracker model
-    tracker = Sort(max_age=50, min_hits=20, iou_threshold=0.1) 
+    tracker = Sort(max_age=50, min_hits=20, iou_threshold=0.1)
     
     # Variables
     tracking_data = []
@@ -79,7 +79,8 @@ def track_sperm():
 
     # Loop to analyse training videos
     for video_index in contents:
-        video_path = '../data/ViSEM_Tracking_extended/train/' + video_index + '/' + video_index + '.mp4'
+        #video_path = '../data/ViSEM_Tracking_extended/train/' + video_index + '/' + video_index + '.mp4'
+        video_path = '../data/VISEM_Tracking/individual/' + video_index + '/' + video_index + '.mp4'
         # Open video
         cap = cv2.VideoCapture(video_path)
         
@@ -107,18 +108,21 @@ def track_sperm():
             trajectories, tracking_data = update_trajectory(trajectories,tracking_data,tracks,labels,frame_id,video_index)
             
             # First 15 seconds
-            if frame_id == 1:
+            if frame_id == 750:
                 break
             
             frame_id += 1
         
         # Release the video capture object and close windows
         cap.release()
+        cv2.destroyAllWindows()
         df = pd.DataFrame(tracking_data, columns=['frame_id', 'video_id', 'track_id', 'class', 'cx', 'cy', 'xmin', 'ymin', 'xmax', 'ymax'])
         df.to_csv('../results/sperm_tracking_individual/sperm_tracking_data_' + video_index + '.csv', index=False)
         #save_df(tracking_data)
         
     #print(df)
+    
+    
     
     
 if __name__ == "__main__":

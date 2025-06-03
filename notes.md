@@ -245,3 +245,11 @@ Features
           Deep learning
             - Sin seleccion de caracteristicas
             - Con seleccion de características
+
+
+
+
+
+
+Ajuste de parametros según videos
+

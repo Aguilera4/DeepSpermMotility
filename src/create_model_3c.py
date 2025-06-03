@@ -16,6 +16,7 @@ from tensorflow.keras import layers, optimizers
 from sklearn.model_selection import learning_curve
 import numpy as np
 import os
+import torch.nn as nn
 import warnings
 from sklearn.preprocessing import label_binarize
 from tensorflow.keras.callbacks import EarlyStopping
@@ -34,8 +35,12 @@ from sklearn.utils import class_weight
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import SelectFromModel,RFE
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, confusion_matrix, ConfusionMatrixDisplay
+import lime
+import shap
+from imblearn.over_sampling import ADASYN
+from tab_transformer_pytorch import TabTransformer
 
-
+import torch
 
 matplotlib.use("TkAgg")  # Use Tkinter-based backend
 warnings.filterwarnings("ignore")
@@ -207,10 +212,9 @@ def draw_roc_auc_curve(y_test,y_pred_prob):
     plt.legend(loc='lower right')
     plt.grid()
     plt.show()
-
-############################## MODELS ##############################
-
-def random_forest(df):
+    
+    
+def feature_engineer(df,balanced_method,use_feature_selection):
     # Features and labels
     X = df.drop(["label"], axis=1)
     y = LabelEncoder().fit_transform(df['label'])
@@ -218,19 +222,37 @@ def random_forest(df):
     # Split data into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
     
-    # Apply SMOTE to balance
-    smote = SMOTE(k_neighbors=2, random_state=42)
-    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+    # Balanced method
+    if balanced_method == 'SMOTE':
+        # Apply SMOTE to balance
+        smote = SMOTE(k_neighbors=2, random_state=42)
+        X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+    if balanced_method == 'ADASYN':
+        # Apply SMOTE to balance
+        smote = ADASYN(random_state=42)
+        X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+    else:
+        X_train_resampled = X_train.copy()  
+        y_train_resampled = y_train.copy() 
     
-    # Features importance
-    X_train_selected, X_test_selected = select_features_importance(X_train_resampled,y_train_resampled,X_test)
-    
+    # Feature selection
+    X_train_selected = X_train_resampled.copy()  
+    X_test_selected = X_test.copy()  
+    if use_feature_selection == True:
+        # Features importance
+        X_train_selected, X_test_selected = select_features_importance(X_train_resampled,y_train_resampled,X_test)
+
+    return [X, y, X_train_selected, X_test_selected, y_train_resampled, y_test]
+
+############################## MODELS ##############################
+
+def random_forest(X_train, X_test, y_train, y_test):
     # Train a Random Forest classifier
     clf = RandomForestClassifier(n_estimators=100, max_depth=40, random_state=42)
-    clf.fit(X_train_selected, y_train_resampled)
+    clf.fit(X_train, y_train)
 
     # Evaluate the model
-    y_pred = clf.predict(X_test_selected)
+    y_pred = clf.predict(X_test)
     
     # Show metrics
     show_metrics(y_test,y_pred)
@@ -238,28 +260,14 @@ def random_forest(df):
     
     #dump(clf, "../models/random_forest_4c.joblib")
     
-def logistic_regression(df):
-    # Features and labels
-    X = df.drop(["label"], axis=1)
-    y = df["label"]
-
-    # Split data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=42)
-    
-    # Apply SMOTE to balance
-    smote = SMOTE(k_neighbors=2, random_state=42)
-    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
-    
-    # Features importance
-    X_train_selected, X_test_selected = select_features_importance(X_train_resampled,y_train_resampled,X_test)
-    
+def logistic_regression(X_train, X_test, y_train, y_test):
     # Train a Logistic regression model
     clf = LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=100)
-    clf.fit(X_train_selected, y_train_resampled)
+    clf.fit(X_train, y_train)
 
     # Evaluate the model
-    y_pred = clf.predict(X_test_selected)
-    y_pred_prob = clf.predict_proba(X_test_selected) # Probability estimates for the positive class
+    y_pred = clf.predict(X_test)
+    y_pred_prob = clf.predict_proba(X_test) # Probability estimates for the positive class
     
     # Show metrics
     show_metrics(y_test,y_pred)
@@ -269,21 +277,7 @@ def logistic_regression(df):
     #dump(clf, "../models/linear_regression_4c.joblib")
     
 
-def XGBoost(df):
-    # Features and labels
-    X = df.drop(["label"], axis=1)
-    y = LabelEncoder().fit_transform(df['label'])
-    
-    # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=42)
-    
-    # Apply SMOTE to balance
-    smote = SMOTE(k_neighbors=2, random_state=42)
-    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
-    
-    # Features importance
-    X_train_selected, X_test_selected = select_features_importance(X_train_resampled,y_train_resampled,X_test)
-    
+def XGBoost(X, y, X_train, X_test, y_train, y_test):
     # Define parameter grid for GridSearchCV
     param_grid = {
         'n_estimators': [50, 100, 200, 1000],
@@ -298,9 +292,9 @@ def XGBoost(df):
         objective="multi:softmax",
         num_class=3,
         eval_metric=["mlogloss", "auc"],
-        learning_rate=0.1,
+        learning_rate=0.4,
         max_depth=5,
-        n_estimators=1000,
+        n_estimators=100,
         random_state=42
     )
     
@@ -309,10 +303,10 @@ def XGBoost(df):
     '''
     
     # eval_set
-    eval_set = [(X_train_selected, y_train_resampled), (X_test_selected, y_test)]
+    eval_set = [(X_train, y_train), (X_test, y_test)]
     
     # Train the model
-    model.fit(X_train_selected, y_train_resampled, eval_set=eval_set, verbose=False)
+    model.fit(X_train, y_train, eval_set=eval_set, verbose=False)
     
     '''grid_search.fit(X_train, y_train)
     
@@ -322,7 +316,7 @@ def XGBoost(df):
 
     # Test the best model
     best_model = grid_search.best_estimator_
-    y_pred = best_model.predict(X_test_selected)
+    y_pred = best_model.predict(X_test)
 
     # Evaluate accuracy
     accuracy = accuracy_score(y_test, y_pred)
@@ -344,7 +338,7 @@ def XGBoost(df):
     plt.show()'''
 
     # Predict
-    y_pred = model.predict(X_test_selected)
+    y_pred = model.predict(X_test)
 
     # Show metrics
     show_metrics(y_test,y_pred)
@@ -358,26 +352,11 @@ def XGBoost(df):
     #dump(model, "../models/XGBoost_4c_extended.joblib")
 
 
-def tabPFN(df):
-    label_encoder =  LabelEncoder()
-    df['label'] = label_encoder.fit_transform(df['label'])
-    
-    # Features and labels
-    #X = df.drop(["label","displacement","time_elapsed","mad","wob","str","bcf"], axis=1).values.astype(np.float32)
-    X = df.drop(["label"], axis=1)
-    y = df["label"]
-    
-    # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
-    
-    # Apply SMOTE to balance
-    smote = SMOTE(k_neighbors=2, random_state=42)
-    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
-        
+def tabPFN(X_train, X_test, y_train, y_test):
     # Initialize a classifier
     clf_base =  TabPFNClassifier(
         ignore_pretraining_limits=True,
-        inference_config = {"SUBSAMPLE_SAMPLES": 1000} # Needs to be set low so that not OOM on fitting intermediate nodes
+        inference_config = {"SUBSAMPLE_SAMPLES": 10} # Needs to be set low so that not OOM on fitting intermediate nodes
     )
     
     tabpfn_tree_clf = RandomForestTabPFNClassifier(
@@ -389,18 +368,17 @@ def tabPFN(df):
     )
 
     # Train the model
-    tabpfn_tree_clf.fit(X_train_resampled, y_train_resampled)
+    tabpfn_tree_clf.fit(X_train, y_train)
+
+    # Predict labels
+    predictions = tabpfn_tree_clf.predict(X_test)
+    print("Accuracy", accuracy_score(y_test, predictions))
     
     # Predict probabilities
     prediction_probabilities = tabpfn_tree_clf.predict_proba(X_test)
     print("ROC AUC:", roc_auc_score(y_test, prediction_probabilities[:, 1]))
 
-    # Predict labels
-    predictions = tabpfn_tree_clf.predict(X_test)
-    print("Accuracy", accuracy_score(y_test, predictions))
-
-
-    dump(tabpfn_tree_clf, "../models/TabPFN_3c_15s_extended.joblib")
+    #dump(tabpfn_tree_clf, "../models/TabPFN_3c_15s_extended.joblib")
     
     
 def tabPFN_load():
@@ -424,21 +402,12 @@ def tabPFN_load():
     
     
 
-def simple_NN(df):
-    X = df.drop(columns=['label'])
-    y = keras.utils.to_categorical(df['label'].values, 3)  # One-hot encoding for 3 classes
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
-    
-    # SMOTE
-    smote = SMOTE(k_neighbors=2,random_state=42)
-    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
-    
-    # Features importance
-    X_train_selected, X_test_selected = select_features_importance(X_train_resampled,y_train_resampled,X_test)
+def simple_NN(X_train, X_test, y_train, y_test):
+    y_train = keras.utils.to_categorical(y_train, 3)
+    y_test = keras.utils.to_categorical(y_test, 3)
     
     model = keras.Sequential([
-        layers.InputLayer(input_shape=(X_train_selected.shape[1],)),  # Input layer for the features
+        layers.InputLayer(input_shape=(X_train.shape[1],)),  # Input layer for the features
         layers.Dense(128, activation='relu'),  # First hidden layer with 128 neurons
         layers.Dropout(0.3),  # Dropout for regularization to prevent overfitting
         layers.Dense(64, activation='relu'),  # Second hidden layer with 64 neurons
@@ -447,15 +416,45 @@ def simple_NN(df):
         layers.Dense(3, activation='softmax')  # Output layer with 3 classes and softmax activation
     ])
     
-    
     # Compile model
-    model.compile(optimizer=optimizers.Adam(learning_rate=0.0001), loss='categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=optimizers.Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
     
     early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
 
     # Train the model normally
-    history = model.fit(X_train_selected, y_train_resampled, epochs=100, batch_size=32, validation_data=(X_test_selected, y_test), callbacks=[early_stopping])
+    history = model.fit(X_train, y_train, epochs=100, batch_size=32, validation_data=(X_test, y_test), callbacks=[early_stopping])
     
+    '''# LIME
+    explainer = lime.lime_tabular.LimeTabularExplainer(
+        training_data=X_train.values,
+        mode='classification',
+        feature_names=X_train.columns.tolist(),
+        class_names=['class 0', 'class 1', 'class 2'],
+        discretize_continuous=True
+    )
+
+    # Explain
+    exp = explainer.explain_instance(X_test.values[0], model.predict, num_features=5)
+    explanation = exp.as_list() 
+    
+    print("Explain LIME:")
+    for feature, weight in explanation:
+        print(f"{feature}: {weight:.4f}")'''
+        
+    '''# SHAP
+    background = X_train.sample(100).values
+    explainer2 = shap.DeepExplainer(model, background)
+    print(X_test.values[:10])
+    # Calcular valores SHAP
+    shap_values = explainer2.shap_values(X_test.values[0:10])
+    
+    print([arr.shape for arr in shap_values])
+    
+    # Visualización
+    for i, class_shap_values in enumerate(shap_values):
+        print(f"Clase {i}: {class_shap_values.shape}")
+        shap.summary_plot(class_shap_values, X_test.values[:10], feature_names=X_train.columns.tolist())'''
+        
     '''
     model.layers[0].trainable = True      
     model.layers[1].trainable = True  
@@ -464,35 +463,83 @@ def simple_NN(df):
     model.compile(optimizer=optimizers.Adam(learning_rate=0.0001), loss='categorical_crossentropy', metrics=['accuracy'])
 
     # Continue training with fine-tuning for 5 more epochs
-    history = model.fit(X_train, y_train, epochs=5, batch_size=32, validation_data=(X_test_selected, y_test))
+    history = model.fit(X_train, y_train, epochs=5, batch_size=32, validation_data=(X_test, y_test))
     '''
 
     # Predict
-    loss, accuracy = model.evaluate(X_test_selected, y_test)
+    loss, accuracy = model.evaluate(X_test, y_test)
     print(f"Test Loss: {loss:.4f}")
     print(f"Test Accuracy: {accuracy:.4f}")
     
     plot_learning_curve_NN(history)
     
-    y_pred = (model.predict(X_test_selected) > 0.5).astype("int32")
+    y_pred = (model.predict(X_test) > 0.5).astype("int32")
     
     print(classification_report(y_test, y_pred))
-    
     # Show metrics
     show_metrics(y_test,y_pred)
-    draw_confusion_matrix(y_test,y_pred)
+    draw_confusion_matrix(np.argmax(y_test, axis=1),np.argmax(y_pred, axis=1))
     
     #dump(model, "../models/simple_NN_4c_extended.joblib")
+    
+    
+def tabTransforrmer(X_train, X_test, y_train, y_test):
+    X_train_cont = torch.tensor(X_train.values, dtype=torch.float)
+    X_test_cont = torch.tensor(X_test.values, dtype=torch.float)
+    y_train = torch.tensor(y_train, dtype=torch.long)
+    y_test = torch.tensor(y_test, dtype=torch.long)
+    y_test_np = y_test
+    
+    # Crear el modelo
+    model = TabTransformer(
+        categories=[], 
+        num_continuous=X.shape[1], 
+        dim=32,
+        depth=3,
+        heads=4,
+        attn_dropout=0.1,
+        ff_dropout=0.1,
+        mlp_hidden_mults=(4, 2),
+        mlp_act=nn.ReLU()
+    )
 
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    criterion = torch.nn.CrossEntropyLoss()
+    
+    x_categ_train = torch.empty(X_train_cont.shape[0], 0).long()
+    x_categ_test = torch.empty(X_test_cont.shape[0], 0).long()
+
+    # Training
+    for epoch in range(10):
+        model.train()
+        optimizer.zero_grad()
+        logits = model(x_categ=x_categ_train, x_cont=X_train_cont)
+        loss = criterion(logits, y_train)
+        loss.backward()
+        optimizer.step()
+
+        # Validation
+        model.eval()
+        with torch.no_grad():
+            test_logits = model(x_categ=x_categ_test, x_cont=X_test_cont)
+            preds = torch.argmax(test_logits, dim=1).numpy()
+            acc = accuracy_score(y_test_np, preds)
+
+        print(f"Epoch {epoch+1}: Train Loss = {loss.item():.4f} | Test Accuracy = {acc:.4f}")
 
 
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
     df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_3c_30s_preprocessing.csv')
     
-    #random_forest(df)
-    #logistic_regression(df)
-    #XGBoost(df)
-    simple_NN(df)
-    #tabPFN(df)
+    X, y, X_train, X_test, y_train, y_test = feature_engineer(df=df,balanced_method="NO",use_feature_selection=False)
+    
+    #random_forest(X_train, X_test, y_train, y_test)
+    #logistic_regression(X_train, X_test, y_train, y_test)
+    #XGBoost(X, y, X_train, X_test, y_train, y_test)
+    #simple_NN(X_train, X_test, y_train, y_test)
+    
+    tabPFN(X_train, X_test, y_train, y_test)
     #tabPFN_load()
+    
+    #tabTransforrmer(X_train, X_test, y_train, y_test)

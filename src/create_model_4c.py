@@ -34,6 +34,7 @@ from sklearn.utils import class_weight
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import SelectFromModel,RFE
 from sklearn.metrics import roc_curve, auc, precision_recall_curve, confusion_matrix, ConfusionMatrixDisplay
+from imblearn.over_sampling import ADASYN
 
 
 
@@ -205,10 +206,8 @@ def draw_roc_auc_curve(y_test,y_pred_prob):
     plt.legend(loc='lower right')
     plt.grid()
     plt.show()
-
-############################## MODELS ##############################
-
-def random_forest(df):
+    
+def feature_engineer(df,balanced_method,use_feature_selection):
     # Features and labels
     X = df.drop(["label"], axis=1)
     y = LabelEncoder().fit_transform(df['label'])
@@ -216,19 +215,39 @@ def random_forest(df):
     # Split data into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
     
-    # Apply SMOTE to balance
-    smote = SMOTE(k_neighbors=2, random_state=42)
-    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+    # Balanced method
+    if balanced_method == 'SMOTE':
+        # Apply SMOTE to balance
+        smote = SMOTE(k_neighbors=2, random_state=42)
+        X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+    if balanced_method == 'ADASYN':
+        # Apply SMOTE to balance
+        smote = ADASYN(random_state=42)
+        X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+    else:
+        X_train_resampled = X_train.copy()  
+        y_train_resampled = y_train.copy() 
     
-    # Features importance
-    X_train_selected, X_test_selected = select_features_importance(X_train_resampled,y_train_resampled,X_test)
+    # Feature selection
+    X_train_selected = X_train_resampled.copy()  
+    X_test_selected = X_test.copy()  
+    if use_feature_selection == True:
+        # Features importance
+        X_train_selected, X_test_selected = select_features_importance(X_train_resampled,y_train_resampled,X_test)
+
+    return [X, y, X_train_selected, X_test_selected, y_train_resampled, y_test]
+
+
+############################## MODELS ##############################
+
+def random_forest(X_train, X_test, y_train, y_test):
     
     # Train a Random Forest classifier
     clf = RandomForestClassifier(n_estimators=1000, random_state=42, max_depth=10)
-    clf.fit(X_train_selected, y_train_resampled)
+    clf.fit(X_train, y_train)
 
     # Evaluate the model
-    y_pred = clf.predict(X_test_selected)
+    y_pred = clf.predict(X_test)
     
     # Show metrics
     show_metrics(y_test,y_pred)
@@ -236,31 +255,15 @@ def random_forest(df):
     
     #dump(clf, "../models/random_forest_4c.joblib")
     
-def logistic_regression(df):
-    # Features and labels
-    X = df.drop(["label"], axis=1)
-    y = LabelEncoder().fit_transform(df['label'])
-
-    #pca = PCA(n_components=2)
-    #X_pca = pca.fit_transform(X)
-
-    # Split data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=42)
-    
-    # Apply SMOTE to balance
-    smote = SMOTE(k_neighbors=2, random_state=42)
-    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
-    
-    # Features importance
-    X_train_selected, X_test_selected = select_features_importance(X_train_resampled,y_train_resampled,X_test)
+def logistic_regression(X_train, X_test, y_train, y_test):
     
     # Train a Logistic regression model
     clf = LogisticRegression(multi_class='multinomial', solver='lbfgs', max_iter=100)
-    clf.fit(X_train_selected, y_train_resampled)
+    clf.fit(X_train, y_train)
 
     # Evaluate the model
-    y_pred = clf.predict(X_test_selected)
-    y_pred_prob = clf.predict_proba(X_test_selected) # Probability estimates for the positive class
+    y_pred = clf.predict(X_test)
+    y_pred_prob = clf.predict_proba(X_test) # Probability estimates for the positive class
     
     # Show metrics
     show_metrics(y_test,y_pred)
@@ -270,20 +273,7 @@ def logistic_regression(df):
     #dump(clf, "../models/linear_regression_4c.joblib")
     
 
-def XGBoost(df):
-    # Features and labels
-    X = df.drop(["label"], axis=1)
-    y = LabelEncoder().fit_transform(df['label'])
-    
-    # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=42)
-    
-    # Apply SMOTE to balance
-    smote = SMOTE(k_neighbors=2, random_state=42)
-    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
-    
-    # Features importance
-    X_train_selected, X_test_selected = select_features_importance(X_train_resampled,y_train_resampled,X_test)
+def XGBoost(X_train, X_test, y_train, y_test):
     
     # Define parameter grid for GridSearchCV
     param_grid = {
@@ -311,10 +301,10 @@ def XGBoost(df):
     '''
     
     # eval_set
-    eval_set = [(X_train_selected, y_train_resampled), (X_test_selected, y_test)]
+    eval_set = [(X_train, y_train), (X_test, y_test)]
     
     # Train the model
-    model.fit(X_train_selected, y_train_resampled, eval_set=eval_set, verbose=False)
+    model.fit(X_train, y_train, eval_set=eval_set, verbose=False)
     
     '''grid_search.fit(X_train, y_train)
     
@@ -346,7 +336,7 @@ def XGBoost(df):
     plt.show()'''
 
     # Predict
-    y_pred = model.predict(X_test_selected)
+    y_pred = model.predict(X_test)
 
     # Show metrics
     show_metrics(y_test,y_pred)
@@ -360,26 +350,7 @@ def XGBoost(df):
     #dump(model, "../models/XGBoost_4c_extended.joblib")
 
 
-def tabPFN(df):
-    label_encoder =  LabelEncoder()
-    df['label'] = label_encoder.fit_transform(df['label'])
-    
-    # Features and labels
-    #X = df.drop(["label","displacement","time_elapsed","mad","wob","str","bcf"], axis=1).values.astype(np.float32)
-    X = df.drop(["label"], axis=1).values.astype(np.float32)
-    y = df["label"]
-    
-    # Train-test split
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
-    
-    '''
-    # Apply RandomUnderSampler to balance
-    rus = RandomUnderSampler(random_state=42)
-    X_train_resampled, y_train_resampled = rus.fit_resample(X_train, y_train)
-    '''
-    # Apply SMOTE to balance
-    smote = SMOTE(k_neighbors=2, random_state=42)
-    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+def tabPFN(X_train, X_test, y_train, y_test):
         
     # Initialize a classifier
     clf_base =  TabPFNClassifier(
@@ -396,7 +367,7 @@ def tabPFN(df):
     )
 
     # Train the model
-    tabpfn_tree_clf.fit(X_train_resampled, y_train_resampled)
+    tabpfn_tree_clf.fit(X_train, y_train)
     
     # Predict probabilities
     prediction_probabilities = tabpfn_tree_clf.predict_proba(X_test)
@@ -431,21 +402,12 @@ def tabPFN_load():
     
     
 
-def simple_NN(df):
-    X = df.drop(columns=['label'])
-    y = keras.utils.to_categorical(df['label'].values, 4)  # One-hot encoding for 3 classes
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
-    
-    # SMOTE
-    smote = SMOTE(k_neighbors=2,random_state=42)
-    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
-    
-    # Features importance
-    X_train_selected, X_test_selected = select_features_importance(X_train_resampled,y_train_resampled,X_test)
+def simple_NN(X_train, X_test, y_train, y_test):
+    y_train = keras.utils.to_categorical(y_train, 4)
+    y_test = keras.utils.to_categorical(y_test, 4)
     
     model = keras.Sequential([
-        layers.InputLayer(input_shape=(X_train_selected.shape[1],)),  # Input layer for the features
+        layers.InputLayer(input_shape=(X_train.shape[1],)),  # Input layer for the features
         layers.Dense(128, activation='relu'),  # First hidden layer with 128 neurons
         layers.Dropout(0.3),  # Dropout for regularization to prevent overfitting
         layers.Dense(64, activation='relu'),  # Second hidden layer with 64 neurons
@@ -460,7 +422,7 @@ def simple_NN(df):
     early_stopping = EarlyStopping(monitor='val_loss', patience=15, restore_best_weights=True)
 
     # Train the model normally
-    history = model.fit(X_train_selected, y_train_resampled, epochs=100, batch_size=32, validation_data=(X_test_selected, y_test), callbacks=[early_stopping])
+    history = model.fit(X_train, y_train, epochs=100, batch_size=32, validation_data=(X_test, y_test), callbacks=[early_stopping])
     
     '''
     model.layers[0].trainable = True      
@@ -474,13 +436,13 @@ def simple_NN(df):
     '''
 
     # Predict
-    loss, accuracy = model.evaluate(X_test_selected, y_test)
+    loss, accuracy = model.evaluate(X_test, y_test)
     print(f"Test Loss: {loss:.4f}")
     print(f"Test Accuracy: {accuracy:.4f}")
     
     plot_learning_curve_NN(history)
     
-    y_pred = (model.predict(X_test_selected) > 0.5).astype("int32")
+    y_pred = (model.predict(X_test) > 0.5).astype("int32")
     print(classification_report(y_test, y_pred))
     
     #dump(model, "../models/simple_NN_4c_extended.joblib")
@@ -490,10 +452,12 @@ def simple_NN(df):
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
     df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_4c_30s_preprocessing.csv')
+    
+    X, y, X_train, X_test, y_train, y_test = feature_engineer(df=df,balanced_method="NO",use_feature_selection=False)
 
-    #random_forest(df)
-    logistic_regression(df)
-    XGBoost(df)
-    simple_NN(df)
-    #tabPFN(df)
+    #random_forest(X_train, X_test, y_train, y_test)
+    logistic_regression(X_train, X_test, y_train, y_test)
+    XGBoost(X_train, X_test, y_train, y_test)
+    simple_NN(X_train, X_test, y_train, y_test)
+    #tabPFN(X_train, X_test, y_train, y_test)
     #tabPFN_load()

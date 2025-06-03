@@ -42,8 +42,8 @@ def data_labelling(df,type_classification,name_file):
     
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features/dataset_30s.csv')
+    df = pd.read_csv('../results/data_features/dataset_12_v3.csv')
     
     #data_labelling(df,'2c','dataset_2c_30s')
-    #data_labelling(df,'3c','dataset_3c_30s')
-    data_labelling(df,'4c_v4','dataset_4c_30s')
+    #data_labelling(df,'3c','dataset_3c_11')
+    data_labelling(df,'4c_v4','dataset_4c_12')
