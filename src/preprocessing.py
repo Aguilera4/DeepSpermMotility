@@ -73,10 +73,24 @@ def iqr_median_impute(df, exclude_cols=None, max_iter=10):
             df_clean.loc[outliers, col] = median
 
     return df_clean
+
+def preprocessing_dataset(df,name_file_result):
+    df = df.drop('sperm_id', axis=1)
+    df_cleaned = deleted_null_values(df)
+    df_scaler = scaler(df_cleaned)
+    df_cleaned_outliers = iqr_median_impute(df_scaler, exclude_cols=['label'])
+    
+    df = pd.DataFrame(df_cleaned_outliers, columns=['total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','lin','wob','str','bcf','label'])
+    
+    # Save the updated DataFrame with velocity data
+    df.to_csv('../results/data_features_labelling_preprocessing/' + name_file_result + '.csv', index=False)
+    
+    return df
+    
     
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features_labelling/dataset_4c_30s.csv')
+    df = pd.read_csv('../results/data_features_labelling/dataset_3c_30s_15_3_01.csv')
     
     df = df.drop('sperm_id', axis=1)
     df_cleaned = deleted_null_values(df)
@@ -86,4 +100,4 @@ if __name__ == "__main__":
     df = pd.DataFrame(df_cleaned_outliers, columns=['total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','lin','wob','str','bcf','label'])
     
     # Save the updated DataFrame with velocity data
-    df.to_csv('../results/data_features_labelling_preprocessing/dataset_4c_30s_preprocessing.csv', index=False)
+    df.to_csv('../results/data_features_labelling_preprocessing/dataset_3c_30s_15_3_01_preprocessing.csv', index=False)

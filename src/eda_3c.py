@@ -128,7 +128,7 @@ def get_more_important_features(df):
 
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_clustering_3c_30s.csv')
+    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_3c_15s_15_20_01_preprocessing.csv')
     
     # Basic information
     print(df.head())

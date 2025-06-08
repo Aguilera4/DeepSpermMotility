@@ -292,9 +292,10 @@ def XGBoost(X, y, X_train, X_test, y_train, y_test):
         objective="multi:softmax",
         num_class=3,
         eval_metric=["mlogloss", "auc"],
-        learning_rate=0.4,
-        max_depth=5,
+        learning_rate=0.1,
+        max_depth=20,
         n_estimators=100,
+        use_label_encoder=False,
         random_state=42
     )
     
@@ -356,7 +357,7 @@ def tabPFN(X_train, X_test, y_train, y_test):
     # Initialize a classifier
     clf_base =  TabPFNClassifier(
         ignore_pretraining_limits=True,
-        inference_config = {"SUBSAMPLE_SAMPLES": 10} # Needs to be set low so that not OOM on fitting intermediate nodes
+        inference_config = {"SUBSAMPLE_SAMPLES": 1000} # Needs to be set low so that not OOM on fitting intermediate nodes
     )
     
     tabpfn_tree_clf = RandomForestTabPFNClassifier(
@@ -371,12 +372,13 @@ def tabPFN(X_train, X_test, y_train, y_test):
     tabpfn_tree_clf.fit(X_train, y_train)
 
     # Predict labels
-    predictions = tabpfn_tree_clf.predict(X_test)
-    print("Accuracy", accuracy_score(y_test, predictions))
+    y_pred = tabpfn_tree_clf.predict(X_test)    # Show metrics
+    show_metrics(y_test,y_pred)
+    draw_confusion_matrix(y_test,y_pred)
     
     # Predict probabilities
-    prediction_probabilities = tabpfn_tree_clf.predict_proba(X_test)
-    print("ROC AUC:", roc_auc_score(y_test, prediction_probabilities[:, 1]))
+    y_pred_proba = tabpfn_tree_clf.predict_proba(X_test)
+    draw_roc_auc_curve(y_test,y_pred_proba)
 
     #dump(tabpfn_tree_clf, "../models/TabPFN_3c_15s_extended.joblib")
     
@@ -422,7 +424,7 @@ def simple_NN(X_train, X_test, y_train, y_test):
     early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
 
     # Train the model normally
-    history = model.fit(X_train, y_train, epochs=100, batch_size=32, validation_data=(X_test, y_test), callbacks=[early_stopping])
+    history = model.fit(X_train, y_train, epochs=100, batch_size=16, validation_data=(X_test, y_test), callbacks=[early_stopping])
     
     '''# LIME
     explainer = lime.lime_tabular.LimeTabularExplainer(
@@ -530,16 +532,25 @@ def tabTransforrmer(X_train, X_test, y_train, y_test):
 
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_3c_30s_preprocessing.csv')
+    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_3c_15s_15_20_01_preprocessing.csv')
     
-    X, y, X_train, X_test, y_train, y_test = feature_engineer(df=df,balanced_method="NO",use_feature_selection=False)
+    X, y, X_train, X_test, y_train, y_test = feature_engineer(df=df,balanced_method="SMOTE",use_feature_selection=False) #SMOTE ADASYN NO
     
-    #random_forest(X_train, X_test, y_train, y_test)
-    #logistic_regression(X_train, X_test, y_train, y_test)
-    #XGBoost(X, y, X_train, X_test, y_train, y_test)
-    #simple_NN(X_train, X_test, y_train, y_test)
+    print(pd.Series(y).value_counts())
     
-    tabPFN(X_train, X_test, y_train, y_test)
+    print("\n*** Random Forest ***")
+    random_forest(X_train, X_test, y_train, y_test)
+    
+    print("\n*** Logistic regression ***")
+    logistic_regression(X_train, X_test, y_train, y_test)
+    
+    print("\n*** XGBoost ***")
+    XGBoost(X, y, X_train, X_test, y_train, y_test)
+    
+    print("\n*** NN ***")
+    simple_NN(X_train, X_test, y_train, y_test)
+    
+    #tabPFN(X_train, X_test, y_train, y_test)
     #tabPFN_load()
     
     #tabTransforrmer(X_train, X_test, y_train, y_test)

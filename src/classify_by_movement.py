@@ -54,7 +54,7 @@ def classification_3_classes(sperm):
         return 2  # Inmotile'''
     
     # Classify based on thresholds
-    if vcl >= 25 and (lin >= 0.5 or alh >= 80 or bcf >= 3 or (sperm['vsl'] > 20 and lin >= 0.5 )):
+    if vcl >= 25 and vsl >= 25 and (lin >= 0.5 or alh >= 80 or bcf >= 3 or (sperm['vsl'] > 20 and lin >= 0.5)):
         return 0  # Progressive motility
     elif (vcl <= 15 and sperm['vsl'] <= 5 and lin <= 0.5) or (vcl >= 5 and vcl < 25 and lin < 0.5):
         return 2
