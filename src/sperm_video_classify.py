@@ -25,7 +25,7 @@ def traking_video(video_path,name_video):# Video capture
     cap = cv2.VideoCapture(video_path)
 
     # Initialize the tracking algorithm
-    tracker = Sort() 
+    tracker = Sort(max_age=15, min_hits=20, iou_threshold=0.1)
 
     # Initialize variables
     tracking_data = []
@@ -62,7 +62,7 @@ def traking_video(video_path,name_video):# Video capture
 
         # Wait for a key press (25ms delay between frames)
         # Press 'q' to exit the sequence
-        if cv2.waitKey(25) & 0xFF == ord('q') or frame_id == 750:
+        if cv2.waitKey(25) & 0xFF == ord('q') or frame_id == 1500:
             break
 
         frame_id += 1
@@ -188,36 +188,36 @@ def calculate_features(name_video):
     # Load the tracking data from a CSV file
     df = pd.read_csv('../results/video_predicted/centroid_velocity/centroid_velocity_' + name_video + '.csv')
 
-    columns = ['sperm_id','total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','linearity','wob','straightness','bcf','angular_displacement','curvature']
+    columns = ['sperm_id','total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','lin','wob','str','bcf']
     data = pd.DataFrame(columns=columns)
 
     # Group by track_id and calculate velocity
     for track_id, group in df.groupby('track_id'):
-        # Convert the columns to a list of tuples
-        trajectory_path = list(zip(group['cx'], group['cy']))
-        
-        # Basic measures
-        time_elapsed = calculate_time_elapsed(trajectory_path,fps)
-        displacement = calculate_displacement(trajectory_path)
-        total_distance = calculate_total_distance(trajectory_path)
+        if len(group) >= 25:
+            # Convert the columns to a list of tuples
+            trajectory_path = list(zip(group['cx'], group['cy']))
+            
+            # Basic measures
+            time_elapsed = calculate_time_elapsed(trajectory_path,fps)
+            displacement = calculate_displacement(trajectory_path)
+            total_distance = calculate_total_distance(trajectory_path)
 
-        # Standard measures
-        vcl = calculate_VCL(trajectory_path,fps)
-        vsl = calculate_VSL(trajectory_path,fps)
-        vap = calculate_VAP(trajectory_path,fps)
-        alh = calculate_ALH(trajectory_path)
-        mad = calculate_MAD(trajectory_path)
-        
-        # Commonly measures
-        linearity = calculate_linearity(trajectory_path,fps)
-        wob = calculate_WOB(trajectory_path,fps)
-        straightness = calculate_STR(trajectory_path)
-        bcf = calculate_BCF(trajectory_path,fps)
-        angular_displacement = calculate_angular_displacement(trajectory_path)
-        curvature = calculate_curvature(trajectory_path)
+            # Standard measures
+            vcl = calculate_VCL(trajectory_path,fps)
+            vsl = calculate_VSL(trajectory_path,fps)
+            vap = calculate_VAP(trajectory_path,fps)
+            alh = calculate_ALH(trajectory_path)
+            mad = calculate_MAD(trajectory_path)
+            
+            # Commonly measures
+            linearity = calculate_linearity(trajectory_path,fps)
+            wob = calculate_WOB(trajectory_path,fps)
+            straightness = calculate_STR(trajectory_path,fps)
+            bcf = calculate_BCF(trajectory_path,fps)
+            #curvature = calculate_curvature(trajectory_path)
 
-        new_row = pd.DataFrame([[track_id,total_distance,displacement,time_elapsed,vcl,vsl,vap,alh,mad,linearity,wob,straightness,bcf,angular_displacement,curvature]], columns=data.columns)
-        data = pd.concat([data,new_row], ignore_index=True)
+            new_row = pd.DataFrame([[track_id,total_distance,displacement,time_elapsed,vcl,vsl,vap,alh,mad,linearity,wob,straightness,bcf]], columns=data.columns)
+            data = pd.concat([data,new_row], ignore_index=True)
 
     # Save the DataFrame
     data.to_csv('../results/video_predicted/features/features_' + name_video + '.csv', index=False)
@@ -228,10 +228,12 @@ def preprocessing_data(name_video):
     # Load the tracking data from a CSV file
     df = pd.read_csv('../results/video_predicted/features/features_' + name_video + '.csv')
     
+    df = df.drop('sperm_id', axis=1)
     df_cleaned = deleted_null_values(df)
     df_scaler = scaler(df_cleaned)
+    df_cleaned_outliers = iqr_median_impute(df_scaler, exclude_cols=['label'])
     
-    df = pd.DataFrame(df_scaler, columns=['sperm_id','total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','linearity','wob','straightness','bcf','angular_displacement','curvature'])
+    df = pd.DataFrame(df_cleaned_outliers, columns=['total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','lin','wob','str','bcf','label'])
     
     # Save the updated DataFrame with velocity data
     df.to_csv('../results/video_predicted/preprocessing/' + name_video + '_preprocessing.csv', index=False)
@@ -239,26 +241,29 @@ def preprocessing_data(name_video):
 
 def classify_data(name_video):
     # Load model
-    loaded_model = joblib.load('../models/XGBoost_4c_extended.joblib')
+    loaded_model = joblib.load('../models/random_forest_3c.joblib')
     
     # Load data
-    df = pd.read_csv('..results/video_predicted/preprocessing/' + name_video + '_preprocessing.csv')
+    df = pd.read_csv('../results/video_predicted/preprocessing/' + name_video + '_preprocessing.csv')
+    df2 = pd.read_csv('../results/video_predicted/features/features_' + name_video + '.csv')
     
     # Delete unused column
-    X = df.drop(["sperm_id"], axis=1).values.astype(np.float32)
+    X = df[['vcl', 'vsl', 'vap', 'mad', 'lin']]
     
-    # Predict
-    y_pred = loaded_model.predict(X)
     
     # Mapping of numeric values to class names
     class_names = {
-        0: "Linear mean swim",
-        1: "Circular swim",
-        2: "Hyperactive",
-        3: "Inmotile"
+        0: "Progressive",
+        1: "Non-progressive",
+        2: "Inmotile"
     }
     
+    # Predict
+    #y_pred = np.argmax(loaded_model.predict(X), axis=1)
+    y_pred=loaded_model.predict(X)
+    
     # Replace numeric values with class names
+    print(y_pred)
     y_pred_mapped = [class_names[label] for label in y_pred]
     
     # Create a count plot with different colors per class
@@ -277,22 +282,27 @@ def classify_data(name_video):
     plt.ylabel("Count")
     plt.tight_layout()
     plt.show()
+    
+    
+    df2['label'] = y_pred
+    
+    df2.to_csv("aa.csv")
         
     
 def classify_video(video_path,name_video):
     
     #traking_video(video_path,name_video)
-    calculate_centroid_velocity(name_video)
-    show_video_tracking(video_path,name_video)
-    calculate_features(name_video)
+    #calculate_centroid_velocity(name_video)
+    #show_video_tracking(video_path,name_video)
+    #calculate_features(name_video)
     #preprocessing_data(name_video)
-    #classify_data(name_video)
+    classify_data(name_video)
     
 
 if __name__ == "__main__":
     # Path to video
-    video_path = '../data/VISEM_Tracking/train/12/12.mp4'
+    video_path = '../data/VISEM_Tracking/train/11/11.mp4'
     
-    classify_video(video_path,'Prueba_clasificacion_12')
+    classify_video(video_path,'Prueba_clasificacion_11')
     
     

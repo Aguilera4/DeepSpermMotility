@@ -103,7 +103,7 @@ def track_sperm(model,list_videos,count_frames=250):
             for track_id, group in pd.DataFrame(tracking_data).groupby(2):
 
                 for i in range(1,len(group)):
-                    cv2.line(frame, (int(group.iloc[i-1,:][4]),int(group.iloc[i-1,:][5])), (int(group.iloc[i,:][4]),int(group.iloc[i,:][5])), (0,0,0), 1)
+                    cv2.line(frame, (int(group.iloc[i-1,:][3]),int(group.iloc[i-1,:][4])), (int(group.iloc[i,:][3]),int(group.iloc[i,:][4])), (0,0,0), 1)
                 
             for key, value in trajectories.items():
                 for i in range(1,len(value)):

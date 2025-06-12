@@ -48,15 +48,13 @@ def calculate_features(df,name_file):
             bcf = calculate_BCF(trajectory_path,fps)
             #curvature = calculate_curvature(trajectory_path)
 
-            new_row = pd.DataFrame([[int(track_id),total_distance,displacement,time_elapsed,vcl,vsl,vap,alh,mad,linearity,wob,straightness,bcf]], columns=data.columns)
+            new_row = pd.DataFrame([[track_id,total_distance,displacement,time_elapsed,vcl,vsl,vap,alh,mad,linearity,wob,straightness,bcf]], columns=data.columns)
             data = pd.concat([data,new_row], ignore_index=True)
 
     # Save the DataFrame
     data.to_csv('../results/data_features/' + name_file + '.csv', index=False)
     
     return data
-    
-    
     
 if __name__ == "__main__":
     # Load the tracking data from a CSV file

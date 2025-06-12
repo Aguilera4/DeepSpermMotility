@@ -44,6 +44,32 @@ def classification_3_classes(sperm):
     lin = sperm['lin']
     bcf = sperm['bcf']
     str = sperm['str']
+    displacement = sperm['displacement']
+    
+    # Classify based on thresholds
+    '''if vcl >= 70 and lin > 0.3:
+        return 0  # Progressive motility
+    elif (vcl >= 14 and vcl < 70) or (vcl > 70 and lin <= 0.3):
+        return 1 # Non-pogressive
+    else:
+        return 2  # Inmotile'''
+    
+    if vcl >= 25 and lin > 0.3:
+        return 0  # Progressive motility
+    elif (vcl >= 5 and vcl < 25) or (vcl > 25 and lin <= 0.3):
+        return 1 # Non-pogressive
+    else:
+        return 2  # Inmotile
+
+    '''# Classify based on thresholds
+    if vcl >= 25 and lin > 0.4:
+        return 0  # Progressive motility
+    elif (vcl <= 15 and sperm['vsl'] <= 5 and lin <= 0.5) or (vcl >= 5 and vcl < 25 and lin < 0.5):
+        return 2
+    elif (vcl >= 5 and vcl < 25) or lin < 0.5:
+        return 1 # Non-pogressive
+    else:
+        return 2  # Inmotile'''
     
     '''# Classify based on thresholds
     if vcl >= 25:
@@ -52,16 +78,6 @@ def classification_3_classes(sperm):
         return 1 # Non-pogressive
     else:
         return 2  # Inmotile'''
-    
-    # Classify based on thresholds
-    if vcl >= 25 and vsl >= 25 and (lin >= 0.5 or alh >= 80 or bcf >= 3 or (sperm['vsl'] > 20 and lin >= 0.5)):
-        return 0  # Progressive motility
-    elif (vcl <= 15 and sperm['vsl'] <= 5 and lin <= 0.5) or (vcl >= 5 and vcl < 25 and lin < 0.5):
-        return 2
-    elif (vcl >= 5 and vcl < 25) or lin < 0.5:
-        return 1 # Non-pogressive
-    else:
-        return 2  # Inmotile
     
     '''# Classify based on thresholds
     if vap <= 32.98: 

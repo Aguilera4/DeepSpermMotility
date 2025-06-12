@@ -248,7 +248,7 @@ def feature_engineer(df,balanced_method,use_feature_selection):
 
 def random_forest(X_train, X_test, y_train, y_test):
     # Train a Random Forest classifier
-    clf = RandomForestClassifier(n_estimators=100, max_depth=40, random_state=42)
+    clf = RandomForestClassifier(n_estimators=1000, max_depth=100, random_state=42)
     clf.fit(X_train, y_train)
 
     # Evaluate the model
@@ -258,7 +258,7 @@ def random_forest(X_train, X_test, y_train, y_test):
     show_metrics(y_test,y_pred)
     draw_confusion_matrix(y_test,y_pred)
     
-    #dump(clf, "../models/random_forest_4c.joblib")
+    dump(clf, "../models/random_forest_3c.joblib")
     
 def logistic_regression(X_train, X_test, y_train, y_test):
     # Train a Logistic regression model
@@ -419,12 +419,12 @@ def simple_NN(X_train, X_test, y_train, y_test):
     ])
     
     # Compile model
-    model.compile(optimizer=optimizers.Adam(learning_rate=0.001), loss='categorical_crossentropy', metrics=['accuracy'])
+    model.compile(optimizer=optimizers.Adam(learning_rate=0.0001), loss='categorical_crossentropy', metrics=['accuracy'])
     
-    early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+    early_stopping = EarlyStopping(monitor='val_loss', patience=15, restore_best_weights=True)
 
     # Train the model normally
-    history = model.fit(X_train, y_train, epochs=100, batch_size=16, validation_data=(X_test, y_test), callbacks=[early_stopping])
+    history = model.fit(X_train, y_train, epochs=200, batch_size=32, validation_data=(X_test, y_test), callbacks=[early_stopping])
     
     '''# LIME
     explainer = lime.lime_tabular.LimeTabularExplainer(
@@ -482,7 +482,7 @@ def simple_NN(X_train, X_test, y_train, y_test):
     show_metrics(y_test,y_pred)
     draw_confusion_matrix(np.argmax(y_test, axis=1),np.argmax(y_pred, axis=1))
     
-    #dump(model, "../models/simple_NN_4c_extended.joblib")
+    dump(model, "../models/simple_NN_3c.joblib")
     
     
 def tabTransforrmer(X_train, X_test, y_train, y_test):
@@ -532,9 +532,9 @@ def tabTransforrmer(X_train, X_test, y_train, y_test):
 
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_3c_15s_15_20_01_preprocessing.csv')
+    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_30s_3c.csv')
     
-    X, y, X_train, X_test, y_train, y_test = feature_engineer(df=df,balanced_method="SMOTE",use_feature_selection=False) #SMOTE ADASYN NO
+    X, y, X_train, X_test, y_train, y_test = feature_engineer(df=df,balanced_method="SMOTE",use_feature_selection=True) #SMOTE ADASYN NO
     
     print(pd.Series(y).value_counts())
     
@@ -542,13 +542,13 @@ if __name__ == "__main__":
     random_forest(X_train, X_test, y_train, y_test)
     
     print("\n*** Logistic regression ***")
-    logistic_regression(X_train, X_test, y_train, y_test)
+    #logistic_regression(X_train, X_test, y_train, y_test)
     
     print("\n*** XGBoost ***")
-    XGBoost(X, y, X_train, X_test, y_train, y_test)
+    #XGBoost(X, y, X_train, X_test, y_train, y_test)
     
     print("\n*** NN ***")
-    simple_NN(X_train, X_test, y_train, y_test)
+    #simple_NN(X_train, X_test, y_train, y_test)
     
     #tabPFN(X_train, X_test, y_train, y_test)
     #tabPFN_load()

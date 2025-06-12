@@ -4,13 +4,13 @@ from sklearn.tree import DecisionTreeClassifier, export_text
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-df = pd.read_csv('../results/data_features/dataset_30s_v2.csv')
+df = pd.read_csv('../results/data_features/dataset_30s_11.csv')
 
 from sklearn.cluster import KMeans
 
-kmeans = KMeans(n_clusters=4, init='k-means++', n_init=100, max_iter=1000, tol=0.0001, random_state=42)
+kmeans = KMeans(n_clusters=3, init='k-means++', n_init=100, max_iter=1000, tol=0.0001, random_state=42)
 
-df_copy = df.loc[:,  ['displacement','vcl','vsl','lin']]
+df_copy = df.drop(["sperm_id"], axis=1)
 
 df_copy['label'] = kmeans.fit_predict(df_copy)
 
@@ -32,10 +32,9 @@ import matplotlib.pyplot as plt
 
 sns.scatterplot(data=df,x='pca1',y='pca2',hue='cluster')
 plt.show()'''
+df_copy.to_csv("dataset_clustering_3c_11.csv", index=False)
 
-#df.to_csv("dataset_clustering_4c_22.csv", index=False)
-
-cluster_stats = df_copy.groupby('label').agg(['mean', 'std', 'min', 'max'])
+cluster_stats = df_copy.groupby('label').agg(['mean'])
 print(cluster_stats)
 
 '''sns.pairplot(df_copy, hue='label', diag_kind='kde')
@@ -48,7 +47,7 @@ y = df_copy['label']
 
 tree = DecisionTreeClassifier(
     criterion='gini',             # Gini impurity
-    max_depth=3,                  # Limit tree depth
+    max_depth=2,                  # Limit tree depth
     min_samples_split=10,         # Minimum samples to split a node
     min_samples_leaf=5,           # Minimum samples at a leaf node
     max_features='sqrt',          # Use square root of features for splits
