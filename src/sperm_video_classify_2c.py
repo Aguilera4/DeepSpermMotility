@@ -186,7 +186,7 @@ def show_video_tracking(video_path,name_video):
 
 def calculate_features(name_video):
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/video_predicted/tracking/tracking_' + name_video + '.csv')
+    df = pd.read_csv('../results/video_predicted/centroid_velocity/centroid_velocity_' + name_video + '.csv')
 
     columns = ['sperm_id','total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','lin','wob','str','bcf']
     data = pd.DataFrame(columns=columns)
@@ -241,7 +241,7 @@ def preprocessing_data(name_video):
 
 def classify_data(name_video):
     # Load model
-    loaded_model = joblib.load('../models/simple_NN_3c.joblib')
+    loaded_model = joblib.load('../models/simple_NN_2c.joblib')
     
     # Load data
     df = pd.read_csv('../results/video_predicted/preprocessing/' + name_video + '_preprocessing.csv')
@@ -254,12 +254,11 @@ def classify_data(name_video):
     # Mapping of numeric values to class names
     class_names = {
         0: "Progressive",
-        1: "Non-progressive",
-        2: "Inmotile"
+        1: "Non-progressive"
     }
     
     # Predict
-    y_pred = np.argmax(loaded_model.predict(X), axis=1)
+    y_pred = np.array((loaded_model.predict(X) > 0.5).astype("int32")).flatten().tolist()
     #y_pred=loaded_model.predict(X)
     
     # Replace numeric values with class names
@@ -286,14 +285,14 @@ def classify_data(name_video):
     
     df2['label'] = y_pred
     
-    df2.to_csv("aa.csv")
+    df2.to_csv("aa_2.csv")
     
   
 def show_video_tracking_labels(video_path,name_video):
     # Load the tracking data with velocity
     df = pd.read_csv('../results/video_predicted/centroid_velocity/centroid_velocity_' + name_video + '.csv')
     # Load the tracking data with velocity
-    df_class = pd.read_csv('./aa.csv')
+    df_class = pd.read_csv('./aa_2.csv')
     
     # Open the video file
     cap = cv2.VideoCapture(video_path)
@@ -337,16 +336,9 @@ def show_video_tracking_labels(video_path,name_video):
             # Define the color according to the class. EstruQcture: 2c/3c/4c
             color = (0, 0, 0)
             if n_class == 0:
-                color = (0, 255, 0) # Green - Progressive/Progressive/Rapdly progressive
+                color = (0, 255, 0) # Green - Progressive
             elif n_class == 1:
-                color = (255, 0, 0) # Blue - Non progressive/Non progressive/Slowly progressive
-            elif n_class == 2:
-                if total_class == 3:
-                    color =  (0, 0, 255)  # Red - -/-/Inmotile
-                else:
-                    color = (0, 255, 255) # Yellow - -/Inmotile/Non progressive
-            elif n_class == 3:
-                color =  (0, 0, 255)  # Red - -/-/Inmotile
+                color = (255, 0, 0) # Blue - Non progressive
         
             # Draw path
             for i in range(1, len(trajectories[track_id])):
@@ -362,9 +354,6 @@ def show_video_tracking_labels(video_path,name_video):
 
         # Display the frame
         cv2.imshow('Sperm Velocity', frame)
-
-        # Save the frame (optional)
-        cv2.imwrite(f'output/frame_{frame_id:04d}.jpg', frame)
 
         # Wait for the calculated delay
         if cv2.waitKey(new_delay) & 0xFF == ord('q'):
@@ -390,8 +379,8 @@ def classify_video(video_path,name_video):
 
 if __name__ == "__main__":
     # Path to video
-    video_path = '../data/VISEM_Tracking_extended/train/12/12.mp4'
+    video_path = '../data/VISEM_Tracking/train/11/11.mp4'
     
-    classify_video(video_path,'Prueba_clasificacion_12')
+    classify_video(video_path,'Prueba_clasificacion_11')
     
     

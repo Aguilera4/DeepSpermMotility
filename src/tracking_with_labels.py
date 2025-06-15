@@ -67,7 +67,7 @@ def track_sperm(model,list_videos,count_frames=250):
     # Loop to analyse training videos
     for video_index in list_videos:
         # Load tracker model 50, 20, 0.1
-        tracker = Sort(max_age=50, min_hits=20, iou_threshold=0.1)
+        tracker = Sort(max_age=15, min_hits=20, iou_threshold=0.1)
         
         print(video_index)
         

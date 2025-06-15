@@ -25,7 +25,7 @@ def calculate_features(df,name_file):
 
     # Group by track_id and calculate velocity
     for track_id, group in df.groupby('track_id'):
-        if len(group) >= 25:
+        if len(group) >= 150:
             # Convert the columns to a list of tuples
             trajectory_path = list(zip(group['cx'], group['cy']))
             

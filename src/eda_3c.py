@@ -20,7 +20,7 @@ def draw_class_distribution(df):
     plt.figure(figsize=(8, 6))
     sns.barplot(x=label_counts.index, y=label_counts.values, hue=label_counts.index, palette="viridis", legend=False)
     plt.title("Label Distribution", fontsize=16)
-    plt.xlabel("Label (0=Progressive,2=Non-pogressive, 3=Inmotile)", fontsize=14)
+    plt.xlabel("Label (0=Progressive,1=Non-pogressive, 2=Inmotile)", fontsize=14)
     plt.ylabel("Count", fontsize=14)
     plt.xticks([0, 1, 2], ['Progressive', 'Non-pogressive', 'Inmotile'])  # Replace 0 and 1 with meaningful labels
     plt.show()
@@ -128,7 +128,7 @@ def get_more_important_features(df):
 
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_11_3c.csv')
+    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_30s_3c.csv')
     
     # Basic information
     print(df.head())
@@ -141,4 +141,4 @@ if __name__ == "__main__":
     #draw_null_count(df)
     #draw_distribucion_columns(df)
     #show_outliers(df)
-    get_more_important_features(df)
+    #get_more_important_features(df)

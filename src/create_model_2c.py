@@ -422,7 +422,7 @@ def simple_NN(X_train, X_test, y_train, y_test):
     early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
     
     # Train the model normally
-    history = model.fit(X_train, y_train, epochs=50, batch_size=16, validation_data=(X_test, y_test), callbacks=[early_stopping])
+    history = model.fit(X_train, y_train, epochs=200, batch_size=32, validation_data=(X_test, y_test), callbacks=[early_stopping])
     
     '''
     model.layers[0].trainable = True      
@@ -450,17 +450,33 @@ def simple_NN(X_train, X_test, y_train, y_test):
     show_metrics(y_test,y_pred)
     draw_confusion_matrix(y_test,y_pred)
     
-    #dump(model, "../models/simple_NN_4c_extended.joblib")
+    dump(model, "../models/q.joblib")
 
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_2c_30s_preprocessing.csv')
+    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_30s_2c.csv')
     
-    X, y, X_train, X_test, y_train, y_test = feature_engineer(df=df,balanced_method="NO",use_feature_selection=False)
+    X, y, X_train, X_test, y_train, y_test = feature_engineer(df=df,balanced_method="SMOTE",use_feature_selection=True)
     
-    #random_forest(X_train, X_test, y_train, y_test)
+    print("*** Data split ***")
+    print("Train distribution")
+    print(pd.Series(y_train).value_counts())
+    print("Test distribution")
+    print(pd.Series(y_test).value_counts())
+    
+    print("\n*** Random Forest ***")
+    random_forest(X_train, X_test, y_train, y_test)
+    
+    print("\n*** Logistic regression ***")
     #logistic_regression(X_train, X_test, y_train, y_test)
-    #XGBoost(X_train, X_test, y_train, y_test)
-    simple_NN(X_train, X_test, y_train, y_test)
+    
+    print("\n*** XGBoost ***")
+    #XGBoost(X, y, X_train, X_test, y_train, y_test)
+    
+    print("\n*** NN ***")
+    #simple_NN(X_train, X_test, y_train, y_test)
+    
     #tabPFN(X_train, X_test, y_train, y_test)
     #tabPFN_load()
+    
+    #tabTransforrmer(X_train, X_test, y_train, y_test)

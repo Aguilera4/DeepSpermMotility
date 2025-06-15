@@ -214,22 +214,22 @@ def draw_roc_auc_curve(y_test,y_pred_prob):
     plt.show()
     
     
-def feature_engineer(df,balanced_method,use_feature_selection):
+def feature_engineer(df,balanced_method,use_feature_selection,test_zize=0.3):
     # Features and labels
     X = df.drop(["label"], axis=1)
     y = LabelEncoder().fit_transform(df['label'])
 
     # Split data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_zize, random_state=42, stratify=y)
     
     # Balanced method
     if balanced_method == 'SMOTE':
         # Apply SMOTE to balance
-        smote = SMOTE(k_neighbors=2, random_state=42)
+        smote = SMOTE(k_neighbors=5, random_state=42)
         X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
-    if balanced_method == 'ADASYN':
+    elif balanced_method == 'ADASYN':
         # Apply SMOTE to balance
-        smote = ADASYN(random_state=42)
+        smote = ADASYN(n_neighbors=5,random_state=42)
         X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
     else:
         X_train_resampled = X_train.copy()  
@@ -246,19 +246,24 @@ def feature_engineer(df,balanced_method,use_feature_selection):
 
 ############################## MODELS ##############################
 
-def random_forest(X_train, X_test, y_train, y_test):
+def random_forest(X_train, X_test, y_train, y_test, X, y):
     # Train a Random Forest classifier
-    clf = RandomForestClassifier(n_estimators=1000, max_depth=100, random_state=42)
-    clf.fit(X_train, y_train)
+    rf = RandomForestClassifier(n_estimators=100, max_depth=100, random_state=42)
+    rf.fit(X_train, y_train)
 
     # Evaluate the model
-    y_pred = clf.predict(X_test)
+    y_pred = rf.predict(X_test)
     
     # Show metrics
     show_metrics(y_test,y_pred)
     draw_confusion_matrix(y_test,y_pred)
     
-    dump(clf, "../models/random_forest_3c.joblib")
+    # Print individual scores and mean accuracy
+    scores = cross_val_score(rf, X, y, cv=5)
+    print("Cross-validation scores:", scores)
+    print("Mean accuracy:", scores.mean())
+    
+    dump(rf, "../models/random_forest_3c.joblib")
     
 def logistic_regression(X_train, X_test, y_train, y_test):
     # Train a Logistic regression model
@@ -274,7 +279,7 @@ def logistic_regression(X_train, X_test, y_train, y_test):
     draw_confusion_matrix(y_test,y_pred)
     draw_roc_auc_curve(y_test,y_pred_prob)
     
-    #dump(clf, "../models/linear_regression_4c.joblib")
+    dump(clf, "../models/logistic_regression_3c.joblib")
     
 
 def XGBoost(X, y, X_train, X_test, y_train, y_test):
@@ -289,11 +294,17 @@ def XGBoost(X, y, X_train, X_test, y_train, y_test):
     
     # Initialize XGBoost classifier
     model = xgb.XGBClassifier(
-        objective="multi:softmax",
+        objective='multi:softprob',
         num_class=3,
         eval_metric=["mlogloss", "auc"],
-        learning_rate=0.1,
-        max_depth=20,
+        learning_rate=0.05,
+        min_child_weight=5,
+        max_depth=3,    
+        subsample=0.7,
+        colsample_bytree=0.7,      
+        gamma=1,
+        reg_alpha=1,
+        reg_lambda=1, 
         n_estimators=100,
         use_label_encoder=False,
         random_state=42
@@ -340,7 +351,7 @@ def XGBoost(X, y, X_train, X_test, y_train, y_test):
 
     # Predict
     y_pred = model.predict(X_test)
-
+    
     # Show metrics
     show_metrics(y_test,y_pred)
     draw_confusion_matrix(y_test,y_pred)
@@ -350,7 +361,7 @@ def XGBoost(X, y, X_train, X_test, y_train, y_test):
     print("Cross-validation scores:", cv_scores)
     print("Mean accuracy:", cv_scores.mean())
     
-    #dump(model, "../models/XGBoost_4c_extended.joblib")
+    dump(model, "../models/XGBoost_3c.joblib")
 
 
 def tabPFN(X_train, X_test, y_train, y_test):
@@ -411,20 +422,18 @@ def simple_NN(X_train, X_test, y_train, y_test):
     model = keras.Sequential([
         layers.InputLayer(input_shape=(X_train.shape[1],)),  # Input layer for the features
         layers.Dense(128, activation='relu'),  # First hidden layer with 128 neurons
-        layers.Dropout(0.3),  # Dropout for regularization to prevent overfitting
         layers.Dense(64, activation='relu'),  # Second hidden layer with 64 neurons
-        layers.Dropout(0.3),  # Dropout for regularization
         layers.Dense(32, activation='relu'),  # Third hidden layer with 32 neurons
         layers.Dense(3, activation='softmax')  # Output layer with 3 classes and softmax activation
     ])
     
-    # Compile model
+    # Compile model 0.0001,5,200,32
     model.compile(optimizer=optimizers.Adam(learning_rate=0.0001), loss='categorical_crossentropy', metrics=['accuracy'])
     
-    early_stopping = EarlyStopping(monitor='val_loss', patience=15, restore_best_weights=True)
+    early_stopping = EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=True)
 
     # Train the model normally
-    history = model.fit(X_train, y_train, epochs=200, batch_size=32, validation_data=(X_test, y_test), callbacks=[early_stopping])
+    history = model.fit(X_train, y_train, epochs=500, batch_size=32, validation_data=(X_test, y_test), callbacks=[early_stopping])
     
     '''# LIME
     explainer = lime.lime_tabular.LimeTabularExplainer(
@@ -439,7 +448,7 @@ def simple_NN(X_train, X_test, y_train, y_test):
     exp = explainer.explain_instance(X_test.values[0], model.predict, num_features=5)
     explanation = exp.as_list() 
     
-    print("Explain LIME:")
+    print("Explain LIME:")qq
     for feature, weight in explanation:
         print(f"{feature}: {weight:.4f}")'''
         
@@ -534,12 +543,16 @@ if __name__ == "__main__":
     # Load the tracking data from a CSV file
     df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_30s_3c.csv')
     
-    X, y, X_train, X_test, y_train, y_test = feature_engineer(df=df,balanced_method="SMOTE",use_feature_selection=True) #SMOTE ADASYN NO
+    X, y, X_train, X_test, y_train, y_test = feature_engineer(df=df,balanced_method='SMOTE',use_feature_selection=True,test_zize=0.3) #SMOTE ADASYN NO
     
-    print(pd.Series(y).value_counts())
+    print("*** Data split ***")
+    print("Train distribution")
+    print(pd.Series(y_train).value_counts())
+    print("Test distribution")
+    print(pd.Series(y_test).value_counts())
     
     print("\n*** Random Forest ***")
-    random_forest(X_train, X_test, y_train, y_test)
+    #random_forest(X_train, X_test, y_train, y_test,X, y)
     
     print("\n*** Logistic regression ***")
     #logistic_regression(X_train, X_test, y_train, y_test)
@@ -548,7 +561,7 @@ if __name__ == "__main__":
     #XGBoost(X, y, X_train, X_test, y_train, y_test)
     
     print("\n*** NN ***")
-    #simple_NN(X_train, X_test, y_train, y_test)
+    simple_NN(X_train, X_test, y_train, y_test)
     
     #tabPFN(X_train, X_test, y_train, y_test)
     #tabPFN_load()

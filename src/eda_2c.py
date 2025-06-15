@@ -17,9 +17,9 @@ def draw_class_distribution(df):
     plt.figure(figsize=(8, 6))
     sns.barplot(x=label_counts.index, y=label_counts.values, hue=label_counts.index, palette="viridis", legend=False)
     plt.title("Label Distribution (Progressive vs. Non-Progressive)", fontsize=16)
-    plt.xlabel("Label (0 = Non-Progressive, 1 = Progressive)", fontsize=14)
+    plt.xlabel("Label (0 = Progressive, 1 = Non-Progressive)", fontsize=14)
     plt.ylabel("Count", fontsize=14)
-    plt.xticks([0, 1], ["Non-Progressive", "Progressive"])  # Replace 0 and 1 with meaningful labels
+    plt.xticks([0, 1], ["Progressive", "Non-Progressive"])  # Replace 0 and 1 with meaningful labels
     plt.show()
         
 def draw_correlation_matix(df):
@@ -64,7 +64,7 @@ def show_outliers(df):
 
 if __name__ == "__main__":
     # Load the tracking data from a CSV file
-    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_2c_11_preprocessing.csv')
+    df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_30s_2c.csv')
     
     draw_class_distribution(df)
     #draw_correlation_matix(df)

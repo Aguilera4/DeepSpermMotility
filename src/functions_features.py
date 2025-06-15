@@ -153,7 +153,7 @@ def calculate_ALH(trajectory):
         distance = numerator / denominator if denominator != 0 else 0
         lateral_displacements.append(distance)
 
-    return np.round(((np.max(lateral_displacements) - np.min(lateral_displacements)) / 2)*microns_pixel, 2)
+    return np.round(((np.max(lateral_displacements) - np.min(lateral_displacements)) / 2), 2)
 
 def calculate_MAD(trajectory):
     """
@@ -183,7 +183,7 @@ def calculate_MAD(trajectory):
 
     # Calculate the MAD
     mad = np.mean(np.abs(angle_diff))
-    return np.round(mad*microns_pixel, 2)
+    return np.round(mad, 2)
 
 
 ############### Commonly measures ###############
@@ -259,7 +259,7 @@ def calculate_BCF(trajectory, fps):
         if numerator1 * numerator2 < 0:
             crossings += 1
     time_elapsed = calculate_time_elapsed(trajectory,fps)
-    return np.round(np.divide(crossings, time_elapsed, where=(time_elapsed != 0))*microns_pixel,2)
+    return np.round(np.divide(crossings, time_elapsed, where=(time_elapsed != 0)),2)
 
 
 def calculate_curvature(trajectory):
@@ -282,4 +282,4 @@ def calculate_curvature(trajectory):
         ds = np.sqrt((trajectory[i+1][0] - trajectory[i][0])**2 + (trajectory[i+1][1] - trajectory[i][1])**2)
         curvature = np.abs(np.divide(dtheta, ds, where=(ds != 0)))
         curvatures.append(curvature)
-    return np.round(np.mean(curvatures)*microns_pixel,2)
+    return np.round(np.mean(curvatures),2)
