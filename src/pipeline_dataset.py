@@ -23,11 +23,11 @@ if __name__ == "__main__":
     print("Completed the calculation of characteristics...")
     
     print("Started data labelling...")
-    df_labelling = data_labelling.data_labelling(df_features,'3c','dataset_30s_3c') # '2c','3c','4c','4c_v2','4c_v4'
+    df_labelling = data_labelling.data_labelling(df_features,'2c','dataset_30s_2c') # '2c','3c','4c','4c_v2','4c_v4'
     print("Completed data labelling...")
     
     print("Started preprocessing...")
-    df_preprocessing = preprocessing.preprocessing_dataset(df_labelling,'dataset_30s_3c')
+    df_preprocessing = preprocessing.preprocessing_dataset(df_labelling,'dataset_30s_2c')
     print("Completed preprocessing...")
     
     print("Completed pipeline...")

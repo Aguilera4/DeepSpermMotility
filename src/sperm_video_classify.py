@@ -380,12 +380,12 @@ def show_video_tracking_labels(video_path,name_video):
 def classify_video(video_path,name_video):
     
     #traking_video(video_path,name_video)
-    #calculate_centroid_velocity(name_video)
+    calculate_centroid_velocity(name_video)
     #show_video_tracking(video_path,name_video)
-    #calculate_features(name_video)
-    #preprocessing_data(name_video)
+    calculate_features(name_video)
+    preprocessing_data(name_video)
     classify_data(name_video)
-    show_video_tracking_labels(video_path,name_video)
+    #show_video_tracking_labels(video_path,name_video)
     
 
 if __name__ == "__main__":

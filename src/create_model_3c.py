@@ -5,17 +5,14 @@ import matplotlib.pyplot as plt
 from classify_by_movement import *
 import pandas as pd
 from functions_features import *
-from sklearn.model_selection import GridSearchCV
 from joblib import dump
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_curve, auc, roc_auc_score, precision_score, recall_score, f1_score
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.ensemble import RandomForestClassifier
-import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers, optimizers
 from sklearn.model_selection import learning_curve
 import numpy as np
-import os
 import torch.nn as nn
 import warnings
 from sklearn.preprocessing import label_binarize
@@ -23,43 +20,34 @@ from tensorflow.keras.callbacks import EarlyStopping
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from imblearn.over_sampling import SMOTE
 import xgboost as xgb
-from imblearn.under_sampling import RandomUnderSampler
 from tabpfn import TabPFNClassifier
 from tabpfn_extensions.rf_pfn import (
     RandomForestTabPFNClassifier,
-    RandomForestTabPFNRegressor,
 )
 import joblib
-from sklearn.decomposition import PCA
-from sklearn.utils import class_weight
 from sklearn.linear_model import LogisticRegression
-from sklearn.feature_selection import SelectFromModel,RFE
-from sklearn.metrics import roc_curve, auc, precision_recall_curve, confusion_matrix, ConfusionMatrixDisplay
-import lime
-import shap
+from sklearn.feature_selection import RFE
+from sklearn.metrics import roc_curve, auc, confusion_matrix
 from imblearn.over_sampling import ADASYN
 from tab_transformer_pytorch import TabTransformer
-
 import torch
 
 matplotlib.use("TkAgg")  # Use Tkinter-based backend
 warnings.filterwarnings("ignore")
 
 
-
-
-def draw_confusion_matrix(y_test,y_pred):
+def draw_confusion_matrix(y_test,y_pred,title):
     # Compute confusion matrix
     cm = confusion_matrix(y_test, y_pred)
     # Create a heatmap
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
-                xticklabels=['Progressive motility', 'Non-pogressive', 'Inmotile'], 
-                yticklabels=['Progressive motility', 'Non-pogressive', 'Inmotile'])
+                xticklabels=['Progressive', 'Non-pogressive', 'Inmotile'], 
+                yticklabels=['Progressive', 'Non-pogressive', 'Inmotile'])
 
     # Add labels and title
     plt.xlabel('Predicted label')
     plt.ylabel('True label')
-    plt.title('Confusion Matrix')
+    plt.title(title)
 
     # Show the plot
     plt.show()
@@ -105,17 +93,6 @@ def show_learning_curve(results):
     plt.grid(True)
     plt.show()
     
-    '''# merror
-    plt.figure(figsize=(10, 6))
-    plt.plot(x_axis, results['validation_0']['merror'], label='Train')
-    plt.plot(x_axis, results['validation_1']['merror'], label='Test')
-    plt.xlabel('Epochs')
-    plt.ylabel('merror')
-    plt.title('XGBoost Learning Curve')
-    plt.legend()
-    plt.grid(True)
-    plt.show()'''
-
 def plot_learning_curve_NN(history):
     plt.plot(history.history['accuracy'], label='Train Acc')
     plt.plot(history.history['val_accuracy'], label='Val Acc')
@@ -247,7 +224,7 @@ def feature_engineer(df,balanced_method,use_feature_selection,test_zize=0.3):
 ############################## MODELS ##############################
 
 def random_forest(X_train, X_test, y_train, y_test, X, y):
-    # Train a Random Forest classifier
+    # Train a Random Forest classifierw
     rf = RandomForestClassifier(n_estimators=100, max_depth=100, random_state=42)
     rf.fit(X_train, y_train)
 
@@ -256,7 +233,7 @@ def random_forest(X_train, X_test, y_train, y_test, X, y):
     
     # Show metrics
     show_metrics(y_test,y_pred)
-    draw_confusion_matrix(y_test,y_pred)
+    draw_confusion_matrix(y_test,y_pred,'Confusion matrix (Random forest)')
     
     # Print individual scores and mean accuracy
     scores = cross_val_score(rf, X, y, cv=5)
@@ -276,7 +253,7 @@ def logistic_regression(X_train, X_test, y_train, y_test):
     
     # Show metrics
     show_metrics(y_test,y_pred)
-    draw_confusion_matrix(y_test,y_pred)
+    draw_confusion_matrix(y_test,y_pred,'Confusion matrix (Logistic regression)')
     draw_roc_auc_curve(y_test,y_pred_prob)
     
     dump(clf, "../models/logistic_regression_3c.joblib")
@@ -310,51 +287,18 @@ def XGBoost(X, y, X_train, X_test, y_train, y_test):
         random_state=42
     )
     
-    '''
-    grid_search = GridSearchCV(estimator=model, param_grid=param_grid, scoring='accuracy', cv=5, verbose=1, n_jobs=-1)
-    '''
-    
     # eval_set
     eval_set = [(X_train, y_train), (X_test, y_test)]
     
     # Train the model
     model.fit(X_train, y_train, eval_set=eval_set, verbose=False)
-    
-    '''grid_search.fit(X_train, y_train)
-    
-    # Print the best parameters and best score
-    print("Best Parameters: ", grid_search.best_params_)
-    print("Best Cross-validation Accuracy: ", grid_search.best_score_)
-
-    # Test the best model
-    best_model = grid_search.best_estimator_
-    y_pred = best_model.predict(X_test)
-
-    # Evaluate accuracy
-    accuracy = accuracy_score(y_test, y_pred)
-    print(f'Accuracy on Test Set: {accuracy:.4f}')'''
-    
-    '''importances = model.feature_importances_
-    #feature_names = df.drop(["label","sperm_id","displacement","time_elapsed","mad","wob","str","bcf","alh","total_distance","lin"], axis=1).columns  # Or provide a list if it's a NumPy array
-    feature_names = df.drop(["label"], axis=1).columns  # Or provide a list if it's a NumPy array
-
-    # Sort by importance
-    indices = np.argsort(importances)[::-1]
-
-    # Plot
-    plt.figure(figsize=(10, 6))
-    plt.title("Feature Importances")
-    plt.bar(range(len(importances)), importances[indices], align="center")
-    plt.xticks(range(len(importances)), ['PCA_1','PCA_2'], rotation=45, ha='right')
-    plt.tight_layout()
-    plt.show()'''
 
     # Predict
     y_pred = model.predict(X_test)
     
     # Show metrics
     show_metrics(y_test,y_pred)
-    draw_confusion_matrix(y_test,y_pred)
+    draw_confusion_matrix(y_test,y_pred,'Confusion matrix (XGBoost)')
     show_learning_curve(model.evals_result())
     
     cv_scores = cross_val_score(model, X, y, cv=5, scoring='accuracy')
@@ -385,13 +329,13 @@ def tabPFN(X_train, X_test, y_train, y_test):
     # Predict labels
     y_pred = tabpfn_tree_clf.predict(X_test)    # Show metrics
     show_metrics(y_test,y_pred)
-    draw_confusion_matrix(y_test,y_pred)
+    draw_confusion_matrix(y_test,y_pred,'Confusion matrix (TabPFN)')
     
     # Predict probabilities
     y_pred_proba = tabpfn_tree_clf.predict_proba(X_test)
     draw_roc_auc_curve(y_test,y_pred_proba)
 
-    #dump(tabpfn_tree_clf, "../models/TabPFN_3c_15s_extended.joblib")
+    dump(tabpfn_tree_clf, "../models/TabPFN_3c.joblib")
     
     
 def tabPFN_load():
@@ -412,7 +356,6 @@ def tabPFN_load():
     # Predict labels
     predictions = loaded_model.predict(X_test.iloc[[0]])
     print("Accuracy", accuracy_score(y_test.iloc[[0]], predictions))
-    
     
 
 def simple_NN(X_train, X_test, y_train, y_test):
@@ -460,21 +403,6 @@ def simple_NN(X_train, X_test, y_train, y_test):
     shap_values = explainer2.shap_values(X_test.values[0:10])
     
     print([arr.shape for arr in shap_values])
-    
-    # Visualización
-    for i, class_shap_values in enumerate(shap_values):
-        print(f"Clase {i}: {class_shap_values.shape}")
-        shap.summary_plot(class_shap_values, X_test.values[:10], feature_names=X_train.columns.tolist())'''
-        
-    '''
-    model.layers[0].trainable = True      
-    model.layers[1].trainable = True  
-
-    # Compile the model with a lower learning rate for fine-tuning
-    model.compile(optimizer=optimizers.Adam(learning_rate=0.0001), loss='categorical_crossentropy', metrics=['accuracy'])
-
-    # Continue training with fine-tuning for 5 more epochs
-    history = model.fit(X_train, y_train, epochs=5, batch_size=32, validation_data=(X_test, y_test))
     '''
 
     # Predict
@@ -489,14 +417,14 @@ def simple_NN(X_train, X_test, y_train, y_test):
     print(classification_report(y_test, y_pred))
     # Show metrics
     show_metrics(y_test,y_pred)
-    draw_confusion_matrix(np.argmax(y_test, axis=1),np.argmax(y_pred, axis=1))
+    draw_confusion_matrix(np.argmax(y_test, axis=1),np.argmax(y_pred, axis=1),'Confusion matrix (Simple neuronal network)')
     
     dump(model, "../models/simple_NN_3c.joblib")
     
     
 def tabTransforrmer(X_train, X_test, y_train, y_test):
-    X_train_cont = torch.tensor(X_train.values, dtype=torch.float)
-    X_test_cont = torch.tensor(X_test.values, dtype=torch.float)
+    X_train_cont = torch.tensor(X_train, dtype=torch.float)
+    X_test_cont = torch.tensor(X_test, dtype=torch.float)
     y_train = torch.tensor(y_train, dtype=torch.long)
     y_test = torch.tensor(y_test, dtype=torch.long)
     y_test_np = y_test
@@ -552,18 +480,16 @@ if __name__ == "__main__":
     print(pd.Series(y_test).value_counts())
     
     print("\n*** Random Forest ***")
-    #random_forest(X_train, X_test, y_train, y_test,X, y)
+    random_forest(X_train, X_test, y_train, y_test,X, y)
     
     print("\n*** Logistic regression ***")
-    #logistic_regression(X_train, X_test, y_train, y_test)
+    logistic_regression(X_train, X_test, y_train, y_test)
     
     print("\n*** XGBoost ***")
-    #XGBoost(X, y, X_train, X_test, y_train, y_test)
+    XGBoost(X, y, X_train, X_test, y_train, y_test)
+    
+    print("\n*** TabPFN ***")
+    tabPFN(X_train, X_test, y_train, y_test)
     
     print("\n*** NN ***")
     simple_NN(X_train, X_test, y_train, y_test)
-    
-    #tabPFN(X_train, X_test, y_train, y_test)
-    #tabPFN_load()
-    
-    #tabTransforrmer(X_train, X_test, y_train, y_test)

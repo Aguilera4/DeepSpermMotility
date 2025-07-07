@@ -21,7 +21,7 @@ def save_df(tracking_data):
     # Save tracking data to a CSV file
     print("save df")
     df = pd.DataFrame(tracking_data, columns=['frame_id', 'video_id', 'track_id', 'cx', 'cy', 'xmin', 'ymin', 'xmax', 'ymax', 'class'])
-    df.to_csv('../results/data_sperm_tracking/tracking_30s.csv', index=False)
+    df.to_csv('../results/data_sperm_tracking/tracking_30s_labels.csv', index=False)
     
 
 def update_trajectory(trajectories,tracking_data,tracks,labels,frame_id,video_index):
