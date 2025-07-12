@@ -7,12 +7,20 @@ import requests
 import time
 import pandas as pd
 import torch
+import joblib
+import sys
+import os
+import warnings
+
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(parent_dir)
+
 from sort.sort import *
 from classify_by_movement import *
 from functions_features import *
 from preprocessing import *
-import joblib
 
+warnings.filterwarnings("ignore")
 
 fps = 50
     
@@ -22,34 +30,34 @@ class VideoApp:
         self.root.title("Video Uploader")
         self.root.geometry("600x500")
         
-        # Entrada para el nombre de la prueba
-        self.name_label = tk.Label(root, text="Nombre de la Prueba:")
+        # Entry for the name of the test
+        self.name_label = tk.Label(root, text="Name of test:")
         self.name_label.pack()
         self.name_entry = tk.Entry(root, width=40)
         self.name_entry.pack(pady=5)
 
-        # Botón para seleccionar video
-        self.select_button = tk.Button(root, text="Seleccionar Video", command=self.select_video)
+        # Button to select video
+        self.select_button = tk.Button(root, text="Select video", command=self.select_video)
         self.select_button.pack(pady=10)
         
-        # Botón para iniciar el proceso
-        self.start_button = tk.Button(root, text="Iniciar", command=self.start_process, state=tk.DISABLED)
+        # Button to init the process
+        self.start_button = tk.Button(root, text="Start", command=self.start_process, state=tk.DISABLED)
         self.start_button.pack(pady=10)
 
 
-        # Botón para reproducir de nuevo
-        self.replay_button = tk.Button(root, text="Reproducir de nuevo", command=self.play_video, state=tk.DISABLED)
+        # Button to play again
+        self.replay_button = tk.Button(root, text="Play again", command=self.play_video, state=tk.DISABLED)
         self.replay_button.pack(pady=10)
         
-        self.stop_button = tk.Button(root, text="⏹️ Detener", command=self.stop_process, state=tk.DISABLED)
+        self.stop_button = tk.Button(root, text="Stop", command=self.stop_process, state=tk.DISABLED)
         self.stop_button.pack(pady=10)
         self.running = False
         
-        # Etiqueta de estado
-        self.status_label = tk.Label(root, text="Selecciona video a analizar", fg="blue")
+        # Status label
+        self.status_label = tk.Label(root, text="Select video to analyze", fg="blue")
         self.status_label.pack()
 
-        # Lienzo para mostrar el video
+        # Canvas to show the video
         self.canvas = tk.Canvas(root, width=500, height=300, bg="black")
         self.canvas.pack()
 
@@ -57,9 +65,9 @@ class VideoApp:
         self.cap = None
         self.running = False
         
-    def traking_video(self):# Video capture
+    def traking_video(self):
         # Load the YOLOv5 model from the checkpoint
-        model = torch.hub.load('ultralytics/yolov5', 'custom', path='../YOLO_model/best_yolov5s.pt')
+        model = torch.hub.load('ultralytics/yolov5', 'custom', path='../../YOLO_model/best_yolov5s.pt')
         
         cap = cv2.VideoCapture(self.video_path)
 
@@ -86,14 +94,55 @@ class VideoApp:
                 labels = bbox_data['class'].values
 
                 tracks = tracker.update(detections)
-
+                
                 for idx, track in enumerate(tracks):
                     xmin, ymin, xmax, ymax, track_id = track
                     cx, cy = (xmin + xmax) / 2, (ymin + ymax) / 2
                     tracking_data.append([frame_id, track_id, labels[idx], cx, cy, xmin, ymin, xmax, ymax])
-
+                    
+                df = pd.DataFrame(tracking_data, columns=['frame_id', 'track_id', 'class', 'cx', 'cy', 'xmin', 'ymin', 'xmax', 'ymax'])
+                df.to_csv('./results/video_predicted/tracking/tracking_' + self.get_test_name() + '.csv', index=False)
+                
+                predictions = []
+                
+                try:
+                    self.calculate_features()
+                except Exception as e:
+                    print("Not enough data (features)",e)
+                    
+                try:
+                    self.preprocessing_data()
+                except Exception as e:
+                    print("Not enough data (preprocessing):", e)
+                    
+                try:
+                    self.classify_data()
+                except Exception as e:
+                    print("Not enough data (classify):", e)
+                    
+                try:
+                    predictions = pd.read_csv('./results/video_predicted/predictions/' + self.get_test_name() + '.csv')
+                except Exception as e:
+                    print("Lectura dataset:", e)
+                
+                    
+                for idx, track in enumerate(tracks):
+                    xmin, ymin, xmax, ymax, track_id = track
+                    cx, cy = (xmin + xmax) / 2, (ymin + ymax) / 2
+                        
+                    try:
+                        label = int(predictions[predictions['sperm_id'] == track_id]['label'])
+                        if label == 0:
+                            color = (0, 255, 0) # Green - Progressive
+                        elif label == 1:
+                            color = (255, 0, 0) # Blue - Non progressive
+                        elif label == 2:
+                            color =  (0, 0, 255)  # Red - Inmotile
+                    except Exception as e:
+                        color = (0, 0, 0)
+                    
                     # Dibujar bbox
-                    cv2.rectangle(frame, (int(xmin), int(ymin)), (int(xmax), int(ymax)), (0, 255, 0), 1)
+                    cv2.rectangle(frame, (int(xmin), int(ymin)), (int(xmax), int(ymax)), color, 1)
                     cv2.putText(frame, f'ID {int(track_id)}', (int(xmin), int(ymin)-10), cv2.FONT_HERSHEY_PLAIN, 1.2, (255, 255, 255), 1,  cv2.LINE_AA )
                     
                     if track_id not in trajectories:
@@ -102,7 +151,7 @@ class VideoApp:
                     
                     # Draw path
                     for i in range(1, len(trajectories[track_id])):
-                        cv2.line(frame, (int(trajectories[track_id][i - 1][0]),int(trajectories[track_id][i - 1][1])), (int(trajectories[track_id][i][0]),int(trajectories[track_id][i][1])), (0, 255, 0), 1)
+                        cv2.line(frame, (int(trajectories[track_id][i - 1][0]),int(trajectories[track_id][i - 1][1])), (int(trajectories[track_id][i][0]),int(trajectories[track_id][i][1])), color, 1)
                                     
                 # Mostrar en canvas
                 rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -113,6 +162,8 @@ class VideoApp:
                 self.canvas.image = img  # mantener referencia
 
                 frame_id += 1
+                elapsed_time = frame_id / fps
+                print(f"Tiempo transcurrido: {elapsed_time:.2f} segundos")
                 root.update_idletasks()
                 time.sleep(1/fps)
 
@@ -121,13 +172,13 @@ class VideoApp:
 
             # Guardar CSV
             df = pd.DataFrame(tracking_data, columns=['frame_id', 'track_id', 'class', 'cx', 'cy', 'xmin', 'ymin', 'xmax', 'ymax'])
-            df.to_csv('../results/video_predicted/tracking/tracking_' + self.get_test_name() + '.csv', index=False)
+            df.to_csv('./results/video_predicted/tracking/tracking_' + self.get_test_name() + '.csv', index=False)
 
         threading.Thread(target=process, daemon=True).start()
         
     def calculate_centroid_velocity(self):
         # Load the tracking data from a CSV file
-        df = pd.read_csv('../results/video_predicted/tracking/tracking_' + self.get_test_name() + '.csv')
+        df = pd.read_csv('./results/video_predicted/tracking/tracking_' + self.get_test_name() + '.csv')
 
         # Calculate velocity for each track_id
         df['velocity_x'] = 0.0
@@ -161,14 +212,14 @@ class VideoApp:
             df.loc[group.index, ['velocity_x', 'velocity_y', 'speed']] = group[['velocity_x', 'velocity_y', 'speed']].fillna(0)
 
         # Save the updated DataFrame with velocity data
-        df.to_csv('../results/video_predicted/centroid_velocity/centroid_velocity_' + self.get_test_name() + '.csv', index=False)
+        df.to_csv('./results/video_predicted/centroid_velocity/centroid_velocity_' + self.get_test_name() + '.csv', index=False)
 
         print("Velocity data saved to sperm_tracking_with_velocity")
     
     def calculate_features(self):
         # Load the tracking data from a CSV file
-        df = pd.read_csv('../results/video_predicted/tracking/tracking_' + self.get_test_name() + '.csv')
-
+        df = pd.read_csv('./results/video_predicted/tracking/tracking_' + self.get_test_name() + '.csv')
+        
         columns = ['sperm_id','total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','lin','wob','str','bcf']
         data = pd.DataFrame(columns=columns)
 
@@ -199,13 +250,13 @@ class VideoApp:
 
                 new_row = pd.DataFrame([[track_id,total_distance,displacement,time_elapsed,vcl,vsl,vap,alh,mad,linearity,wob,straightness,bcf]], columns=data.columns)
                 data = pd.concat([data,new_row], ignore_index=True)
-
+                
         # Save the DataFrame
-        data.to_csv('../results/video_predicted/features/features_' + self.get_test_name() + '.csv', index=False)
+        data.to_csv('./results/video_predicted/features/features_' + self.get_test_name() + '.csv', index=False)
     
-    def preprocessing_data(self):  
+    def preprocessing_data(self):
         # Load the tracking data from a CSV file
-        df = pd.read_csv('../results/video_predicted/features/features_' + self.get_test_name() + '.csv')
+        df = pd.read_csv('./results/video_predicted/features/features_' + self.get_test_name() + '.csv')
         
         df = df.drop('sperm_id', axis=1)
         df_cleaned = deleted_null_values(df)
@@ -215,20 +266,19 @@ class VideoApp:
         df = pd.DataFrame(df_scaler, columns=['total_distance','displacement','time_elapsed','vcl','vsl','vap','alh','mad','lin','wob','str','bcf'])
         
         # Save the updated DataFrame with velocity data
-        df.to_csv('../results/video_predicted/preprocessing/' + self.get_test_name() + '_preprocessing.csv', index=False)
+        df.to_csv('./results/video_predicted/preprocessing/' + self.get_test_name() + '_preprocessing.csv', index=False)
         
     def classify_data(self):
         # Load model
-        loaded_model = joblib.load('../models/simple_NN_3c.joblib')
+        loaded_model = joblib.load('../../models/random_forest_3c.joblib')
         
         # Load data
-        df = pd.read_csv('../results/video_predicted/preprocessing/' + self.get_test_name() + '_preprocessing.csv')
-        df2 = pd.read_csv('../results/video_predicted/features/features_' + self.get_test_name() + '.csv')
+        df = pd.read_csv('./results/video_predicted/preprocessing/' + self.get_test_name() + '_preprocessing.csv')
+        df2 = pd.read_csv('./results/video_predicted/features/features_' + self.get_test_name() + '.csv')
         
         # Delete unused column
-        X = df[['vcl', 'vsl', 'vap', 'alh', 'str']]
+        X = df[['vcl', 'vsl', 'vap', 'lin', 'str']]
         
-        print(X)
         # Mapping of numeric values to class names
         class_names = {
             0: "Progressive",
@@ -237,10 +287,10 @@ class VideoApp:
         }
         
         # Predict
-        y_pred = np.argmax(loaded_model.predict(X), axis=1)
-        #y_pred=loaded_model.predict(X)
+        #y_pred = np.argmax(loaded_model.predict(X), axis=1)
+        y_pred=loaded_model.predict(X)
         
-        # Replace numeric values with class names
+        '''# Replace numeric values with class names
         print(y_pred)
         y_pred_mapped = [class_names[label] for label in y_pred]
         
@@ -259,41 +309,40 @@ class VideoApp:
         plt.xlabel("Categories")
         plt.ylabel("Count")
         plt.tight_layout()
-        plt.show()
+        plt.show()'''
         
         
         df2['label'] = y_pred
-        
-        df2.to_csv("aa.csv")
+        df2.to_csv('./results/video_predicted/predictions/' + self.get_test_name() + '.csv', index=False)
 
     def select_video(self):
         """ Permite seleccionar un video """
         self.video_path = filedialog.askopenfilename(filetypes=[("Video Files", "*.mp4;*.avi;*.mov;*.mkv")])
         
         if self.video_path:
-            prueba_nombre = self.name_entry.get().strip()
+            name_test = self.name_entry.get().strip()
             
-            if not prueba_nombre:
-                self.status_label.config(text="⚠️ Escribe un nombre para la prueba", fg="red")
+            if not name_test:
+                self.status_label.config(text="Enter a name for the test", fg="red")
                 return
             
-            self.status_label.config(text="Video seleccionado: OK", fg="green")
-            self.start_button.config(state=tk.NORMAL)  # Habilitar botón de iniciar
-            self.replay_button.config(state=tk.DISABLED)  # Desactivar botón de reproducir de nuevo
+            self.status_label.config(text="Video selected: OK", fg="green")
+            self.start_button.config(state=tk.NORMAL)
+            self.replay_button.config(state=tk.DISABLED)
 
     def get_test_name(self):
-        """ Obtiene el nombre ingresado en la caja de texto """
+        """ Gets the name entered in the text box """
         return self.name_entry.get().strip()
             
     def start_process(self):
-        """ Inicia la reproducción del video """
-        prueba_nombre = self.name_entry.get().strip()
+        """ Starts video playback """
+        name_test = self.name_entry.get().strip()
 
-        if not self.video_path or not prueba_nombre:
-            self.status_label.config(text="⚠️ Faltan datos. Ingresa un nombre y selecciona un video.", fg="red")
+        if not self.video_path or not name_test:
+            self.status_label.config(text="Missing data. Enter a name and select a video.", fg="red")
             return
 
-        self.status_label.config(text=f"Cargando video '{prueba_nombre}'...", fg="orange")
+        self.status_label.config(text=f"Loading video '{name_test}'...", fg="orange")
         self.root.update_idletasks()
             
         #sperm_video_classify.classify_video(self.video_path,self.get_test_name())
@@ -304,17 +353,13 @@ class VideoApp:
         self.replay_button.config(state=tk.DISABLED)
         
         self.traking_video()
-        self.calculate_centroid_velocity()
-        self.calculate_features()
-        self.preprocessing_data()
-        self.classify_data()
         
-        self.status_label.config(text=f"Reproduciendo: {prueba_nombre}", fg="green")
-        self.play_video()
+        self.status_label.config(text=f"Replaying: {name_test}", fg="green")
+        #self.play_video()
         
     def stop_process(self):
         self.running = False
-        self.status_label.config(text="Proceso detenido manualmente ❌", fg="red")
+        self.status_label.config(text="Manually stopped process", fg="red")
         self.stop_button.config(state=tk.DISABLED)
 
     def play_video(self):
@@ -322,14 +367,14 @@ class VideoApp:
             return
         
         # Load the tracking data with velocity
-        df = pd.read_csv('../results/video_predicted/centroid_velocity/centroid_velocity_' + self.get_test_name() + '.csv')
+        df = pd.read_csv('./results/video_predicted/centroid_velocity/centroid_velocity_' + self.get_test_name() + '.csv')
         trajectories = {}
         
         self.cap = cv2.VideoCapture(self.video_path)
-        self.replay_button.config(state=tk.DISABLED)  # Desactivar botón mientras se reproduce
+        self.replay_button.config(state=tk.DISABLED)
         
-        fps = int(self.cap.get(cv2.CAP_PROP_FPS))  # Obtener FPS del video
-        max_frames = fps * 30  # Máximo de frames a reproducir (5 segundos)
+        fps = int(self.cap.get(cv2.CAP_PROP_FPS))
+        max_frames = fps * 30  # 30 seconds
 
         def update():
             # Process the video frame by frame
@@ -343,7 +388,7 @@ class VideoApp:
                 frame_data = df[df['frame_id'] == frame_id]
                 
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                frame = cv2.resize(frame, (500, 300))  # Ajustar tamaño
+                frame = cv2.resize(frame, (500, 300))
 
                 # Draw velocity vectors on the frame
                 for _, row in frame_data.iterrows():
@@ -366,37 +411,37 @@ class VideoApp:
                 img_tk = ImageTk.PhotoImage(image=img)
                 
                 self.canvas.create_image(0, 0, anchor=tk.NW, image=img_tk)
-                self.canvas.image = img_tk  # Mantener referencia
+                self.canvas.image = img_tk
 
                 self.root.update_idletasks()
-                self.root.after(30)  # Ajuste para mantener fluidez
+                self.root.after(30)
 
             self.cap.release()
-            self.replay_button.config(state=tk.NORMAL)  # Habilitar botón de reproducir de nuevo
-            self.status_label.config(text="Reproducción finalizada", fg="blue")
+            self.replay_button.config(state=tk.NORMAL)
+            self.status_label.config(text="Reproduction completed", fg="blue")
 
         threading.Thread(target=update, daemon=True).start()
 
     def upload_video(self):
         if not self.video_path:
-            self.status_label.config(text="¡No hay video seleccionado!", fg="red")
+            self.status_label.config(text="No video selected!", fg="red")
             return
 
-        self.status_label.config(text="Subiendo...", fg="orange")
+        self.status_label.config(text="Uploading...", fg="orange")
 
         def upload():
-            url = "https://your-server.com/upload"  # Cambiar por endpoint real
+            url = "https://DeepSpermMotility.com/upload"
             files = {'file': open(self.video_path, 'rb')}
             response = requests.post(url, files=files)
 
             if response.status_code == 200:
-                self.status_label.config(text="¡Subida exitosa!", fg="green")
+                self.status_label.config(text="Successful upload!", fg="green")
             else:
-                self.status_label.config(text="Error en la subida", fg="red")
+                self.status_label.config(text="Error in upload", fg="red")
 
         threading.Thread(target=upload, daemon=True).start()
 
-# Ejecutar la aplicación
+# Running the application
 root = tk.Tk()
 app = VideoApp(root)
 root.mainloop()
