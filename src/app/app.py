@@ -1,5 +1,6 @@
 import cv2
 import tkinter as tk
+from tkinter import ttk
 from tkinter import filedialog
 from PIL import Image, ImageTk
 import threading
@@ -11,6 +12,7 @@ import joblib
 import sys
 import os
 import warnings
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
@@ -28,29 +30,57 @@ class VideoApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Video Uploader")
-        self.root.geometry("600x500")
+        self.root.geometry("700x500")
+        
+        # Frame container for the row
+        self.top_controls_frame = tk.Frame(root)
+        self.top_controls_frame.pack(pady=10)
         
         # Entry for the name of the test
-        self.name_label = tk.Label(root, text="Name of test:")
-        self.name_label.pack()
-        self.name_entry = tk.Entry(root, width=40)
-        self.name_entry.pack(pady=5)
+        self.name_label = tk.Label(self.top_controls_frame, text="Name of test:")
+        self.name_label.pack(side=tk.LEFT, padx=5)
+        self.name_entry = tk.Entry(self.top_controls_frame, width=30)
+        self.name_entry.pack(side=tk.LEFT, padx=5)
+
+        # Entry for indicate the total time to analysis
+        self.name_label = tk.Label(self.top_controls_frame, text="Time analyzed:")
+        self.name_label.pack(side=tk.LEFT, padx=5)
+        self.analysis_time_entry = tk.Entry(self.top_controls_frame, font=("Arial", 10), width=10)
+        self.analysis_time_entry.insert(0, "30")
+        self.analysis_time_entry.pack(side=tk.LEFT, padx=5)
+        
+        # Select classes
+        self.class_label = tk.Label(self.top_controls_frame, text="Classes:")
+        self.class_label.pack(side=tk.LEFT, padx=5)
+
+        self.class_options = ttk.Combobox(self.top_controls_frame, values=["2 classes", "3 classes", "4 classes"], state="readonly", width=10)
+        self.class_options.current(0)
+        self.class_options.pack(side=tk.LEFT, padx=5)
 
         # Button to select video
-        self.select_button = tk.Button(root, text="Select video", command=self.select_video)
-        self.select_button.pack(pady=10)
+        self.select_button = tk.Button(self.top_controls_frame, text="Select video", command=self.select_video)
+        self.select_button.pack(side=tk.LEFT, padx=5)
         
-        # Button to init the process
-        self.start_button = tk.Button(root, text="Start", command=self.start_process, state=tk.DISABLED)
-        self.start_button.pack(pady=10)
+        # Buttons
+        self.button_frame = tk.Frame(root)
+        self.button_frame.pack(pady=10)
 
+        # Button to init the process
+        self.start_button = tk.Button(self.button_frame, text="Start", command=self.start_process, state=tk.DISABLED)
+        self.start_button.pack(side=tk.LEFT, padx=5)
 
         # Button to play again
-        self.replay_button = tk.Button(root, text="Play again", command=self.play_video, state=tk.DISABLED)
-        self.replay_button.pack(pady=10)
+        self.replay_button = tk.Button(self.button_frame, text="Play again", command=self.play_video, state=tk.DISABLED)
+        self.replay_button.pack(side=tk.LEFT, padx=5)
         
-        self.stop_button = tk.Button(root, text="Stop", command=self.stop_process, state=tk.DISABLED)
-        self.stop_button.pack(pady=10)
+        # Button to stop
+        self.stop_button = tk.Button(self.button_frame, text="Stop", command=self.stop_process, state=tk.DISABLED)
+        self.stop_button.pack(side=tk.LEFT, padx=5)
+        
+        # Show results
+        self.view_results_button = tk.Button(root, text="Show results", command=self.view_results, state=tk.DISABLED)
+        self.view_results_button.pack(pady=10)
+        
         self.running = False
         
         # Status label
@@ -60,6 +90,10 @@ class VideoApp:
         # Canvas to show the video
         self.canvas = tk.Canvas(root, width=500, height=300, bg="black")
         self.canvas.pack()
+        
+        # Time transcurred
+        self.time_label = tk.Label(root, text="Time: 0.00 s", font=("Arial", 12), fg="black")
+        self.time_label.pack(pady=5)
 
         self.video_path = None
         self.cap = None
@@ -85,7 +119,7 @@ class VideoApp:
             while cap.isOpened() and app.running:
                 ret, frame = cap.read()
                 
-                if not ret or frame_id > 1500:
+                if not ret or frame_id > float(self.analysis_time_entry.get()) * 50:
                     break
 
                 results = model(frame)
@@ -95,10 +129,10 @@ class VideoApp:
 
                 tracks = tracker.update(detections)
                 
-                for idx, track in enumerate(tracks):
-                    xmin, ymin, xmax, ymax, track_id = track
-                    cx, cy = (xmin + xmax) / 2, (ymin + ymax) / 2
-                    tracking_data.append([frame_id, track_id, labels[idx], cx, cy, xmin, ymin, xmax, ymax])
+                for (xmin, ymin, xmax, ymax, track_id), label in zip(tracks, labels):
+                    cx = (xmin + xmax) * 0.5
+                    cy = (ymin + ymax) * 0.5
+                    tracking_data.append([frame_id, track_id, label, cx, cy, xmin, ymin, xmax, ymax])
                     
                 df = pd.DataFrame(tracking_data, columns=['frame_id', 'track_id', 'class', 'cx', 'cy', 'xmin', 'ymin', 'xmax', 'ymax'])
                 df.to_csv('./results/video_predicted/tracking/tracking_' + self.get_test_name() + '.csv', index=False)
@@ -126,22 +160,27 @@ class VideoApp:
                     print("Lectura dataset:", e)
                 
                     
-                for idx, track in enumerate(tracks):
-                    xmin, ymin, xmax, ymax, track_id = track
-                    cx, cy = (xmin + xmax) / 2, (ymin + ymax) / 2
+                for (xmin, ymin, xmax, ymax, track_id), label in zip(tracks, labels):
+                    cx = (xmin + xmax) * 0.5
+                    cy = (ymin + ymax) * 0.5
                         
                     try:
                         label = int(predictions[predictions['sperm_id'] == track_id]['label'])
                         if label == 0:
-                            color = (0, 255, 0) # Green - Progressive
+                            color = (0, 255, 0) # Green - Progressive/Progressive/Rapdly progressive
                         elif label == 1:
-                            color = (255, 0, 0) # Blue - Non progressive
+                            color = (255, 0, 0) # Blue - Non progressive/Non progressive/Slowly progressive
                         elif label == 2:
-                            color =  (0, 0, 255)  # Red - Inmotile
+                            if self.class_options.get() == '3 classes':
+                                color =  (0, 0, 255)  # Red - -/-/Inmotile
+                            else:
+                                color = (0, 255, 255) # Yellow - -/Inmotile/Non progressive
+                        elif label == 3:
+                            color =  (0, 0, 255)  # Red - -/-/Inmotile
                     except Exception as e:
                         color = (0, 0, 0)
                     
-                    # Dibujar bbox
+                    # Draw bbox
                     cv2.rectangle(frame, (int(xmin), int(ymin)), (int(xmax), int(ymax)), color, 1)
                     cv2.putText(frame, f'ID {int(track_id)}', (int(xmin), int(ymin)-10), cv2.FONT_HERSHEY_PLAIN, 1.2, (255, 255, 255), 1,  cv2.LINE_AA )
                     
@@ -150,29 +189,31 @@ class VideoApp:
                     trajectories[track_id].append((cx, cy))
                     
                     # Draw path
-                    for i in range(1, len(trajectories[track_id])):
-                        cv2.line(frame, (int(trajectories[track_id][i - 1][0]),int(trajectories[track_id][i - 1][1])), (int(trajectories[track_id][i][0]),int(trajectories[track_id][i][1])), color, 1)
-                                    
-                # Mostrar en canvas
+                    points = trajectories[track_id]
+                    for p1, p2 in zip(points, points[1:]):
+                        cv2.line(frame, (int(p1[0]), int(p1[1])), (int(p2[0]), int(p2[1])), color, 1)
+                          
+                # Show canvas
                 rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 rgb_frame = cv2.resize(rgb_frame, (500, 300))
                 img = ImageTk.PhotoImage(Image.fromarray(rgb_frame))
 
                 self.canvas.create_image(0, 0, anchor=tk.NW, image=img)
-                self.canvas.image = img  # mantener referencia
+                self.canvas.image = img
 
                 frame_id += 1
                 elapsed_time = frame_id / fps
-                print(f"Tiempo transcurrido: {elapsed_time:.2f} segundos")
+                self.time_label.config(text=f"Time: {elapsed_time:.2f} s")
                 root.update_idletasks()
                 time.sleep(1/fps)
 
             cap.release()
             self.status_label.config(text="Tracking finalizado", fg="blue")
 
-            # Guardar CSV
+            # Save CSV
             df = pd.DataFrame(tracking_data, columns=['frame_id', 'track_id', 'class', 'cx', 'cy', 'xmin', 'ymin', 'xmax', 'ymax'])
             df.to_csv('./results/video_predicted/tracking/tracking_' + self.get_test_name() + '.csv', index=False)
+            self.view_results_button.config(state=tk.NORMAL)
 
         threading.Thread(target=process, daemon=True).start()
         
@@ -213,8 +254,6 @@ class VideoApp:
 
         # Save the updated DataFrame with velocity data
         df.to_csv('./results/video_predicted/centroid_velocity/centroid_velocity_' + self.get_test_name() + '.csv', index=False)
-
-        print("Velocity data saved to sperm_tracking_with_velocity")
     
     def calculate_features(self):
         # Load the tracking data from a CSV file
@@ -225,7 +264,7 @@ class VideoApp:
 
         # Group by track_id and calculate velocity
         for track_id, group in df.groupby('track_id'):
-            if len(group) >= 100:
+            if len(group) >= 50:
                 # Convert the columns to a list of tuples
                 trajectory_path = list(zip(group['cx'], group['cy']))
                 
@@ -269,8 +308,6 @@ class VideoApp:
         df.to_csv('./results/video_predicted/preprocessing/' + self.get_test_name() + '_preprocessing.csv', index=False)
         
     def classify_data(self):
-        # Load model
-        loaded_model = joblib.load('../../models/random_forest_3c.joblib')
         
         # Load data
         df = pd.read_csv('./results/video_predicted/preprocessing/' + self.get_test_name() + '_preprocessing.csv')
@@ -279,38 +316,18 @@ class VideoApp:
         # Delete unused column
         X = df[['vcl', 'vsl', 'vap', 'lin', 'str']]
         
-        # Mapping of numeric values to class names
-        class_names = {
-            0: "Progressive",
-            1: "Non-progressive",
-            2: "Inmotile"
-        }
+        # Load model
+        selected_option = self.class_options.get()
+        if selected_option == '2 classes':
+            loaded_model = joblib.load('../../models/random_forest_2c.joblib')
+        elif  selected_option == '3 classes':
+            loaded_model = joblib.load('../../models/random_forest_3c.joblib')
+        elif  selected_option == '4 classes':
+            loaded_model = joblib.load('../../models/random_forest_4c.joblib')
         
         # Predict
         #y_pred = np.argmax(loaded_model.predict(X), axis=1)
         y_pred=loaded_model.predict(X)
-        
-        '''# Replace numeric values with class names
-        print(y_pred)
-        y_pred_mapped = [class_names[label] for label in y_pred]
-        
-        # Create a count plot with different colors per class
-        ax = sns.countplot(x=y_pred_mapped, palette="Set2")
-
-        # Add the count labels on top of each bar
-        for p in ax.patches:
-            ax.annotate(f'{p.get_height()}', 
-                        (p.get_x() + p.get_width() / 2., p.get_height()), 
-                        ha='center', va='center', 
-                        fontsize=12, color='black', 
-                        xytext=(0, 5), textcoords='offset points')
-
-        plt.title("Distribution of Sperm Motility Categories")
-        plt.xlabel("Categories")
-        plt.ylabel("Count")
-        plt.tight_layout()
-        plt.show()'''
-        
         
         df2['label'] = y_pred
         df2.to_csv('./results/video_predicted/predictions/' + self.get_test_name() + '.csv', index=False)
@@ -345,8 +362,6 @@ class VideoApp:
         self.status_label.config(text=f"Loading video '{name_test}'...", fg="orange")
         self.root.update_idletasks()
             
-        #sperm_video_classify.classify_video(self.video_path,self.get_test_name())
-            
         self.running = True
         self.stop_button.config(state=tk.NORMAL)
         self.start_button.config(state=tk.DISABLED)
@@ -355,7 +370,7 @@ class VideoApp:
         self.traking_video()
         
         self.status_label.config(text=f"Replaying: {name_test}", fg="green")
-        #self.play_video()
+        self.replay_button.config(state=tk.NORMAL)
         
     def stop_process(self):
         self.running = False
@@ -367,14 +382,15 @@ class VideoApp:
             return
         
         # Load the tracking data with velocity
-        df = pd.read_csv('./results/video_predicted/centroid_velocity/centroid_velocity_' + self.get_test_name() + '.csv')
+        df_predictions = pd.read_csv('./results/video_predicted/predictions/' + self.get_test_name() + '.csv')
+        df_tracks = pd.read_csv('./results/video_predicted/tracking/tracking_' + self.get_test_name() + '.csv')
         trajectories = {}
         
         self.cap = cv2.VideoCapture(self.video_path)
         self.replay_button.config(state=tk.DISABLED)
         
         fps = int(self.cap.get(cv2.CAP_PROP_FPS))
-        max_frames = fps * 30  # 30 seconds
+        max_frames = fps * float(self.analysis_time_entry.get())  # 30 seconds
 
         def update():
             # Process the video frame by frame
@@ -385,7 +401,7 @@ class VideoApp:
                     break
                 
                 # Get the data for the current frame
-                frame_data = df[df['frame_id'] == frame_id]
+                frame_data = df_tracks[df_tracks['frame_id'] == frame_id]
                 
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 frame = cv2.resize(frame, (500, 300))
@@ -393,20 +409,40 @@ class VideoApp:
                 # Draw velocity vectors on the frame
                 for _, row in frame_data.iterrows():
                     cx, cy = int(row['cx']), int(row['cy'])
-                    vx, vy = row['velocity_x'], row['velocity_y']
-
-                    # Scale the velocity vector for visualization
-                    scale = 0.3  # Adjust this to make the vectors visible
-                    end_point = int(cx + vx * scale), int(cy + vy * scale)
+                    xmin, ymin, xmax, ymax = int(row['xmin']), int(row['ymin']), int(row['xmax']), int(row['ymax'])
+                    
+                    try:
+                        label = int(df_predictions[df_predictions['sperm_id'] == track_id]['label'])
+                        if label == 0:
+                            color = (0, 255, 0) # Green - Progressive/Progressive/Rapdly progressive
+                        elif label == 1:
+                            color = (255, 0, 0) # Blue - Non progressive/Non progressive/Slowly progressive
+                        elif label == 2:
+                            if self.class_options.get() == '3 classes':
+                                color =  (0, 0, 255)  # Red - -/-/Inmotile
+                            else:
+                                color = (0, 255, 255) # Yellow - -/Inmotile/Non progressive
+                        elif label == 3:
+                            color =  (0, 0, 255)  # Red - -/-/Inmotile
+                    except Exception as e:
+                        color = (0, 0, 0)
+                    
                     track_id = row['track_id']
+                    
+                    # Draw bbox
+                    cv2.rectangle(frame, (int(xmin), int(ymin)), (int(xmax), int(ymax)), color, 1)
+                    cv2.putText(frame, f'ID {int(track_id)}', (int(xmin), int(ymin)-10), cv2.FONT_HERSHEY_PLAIN, 1.2, (255, 255, 255), 1,  cv2.LINE_AA )
+                    
+                    
                     if track_id not in trajectories:
                         trajectories[track_id] = []
                     trajectories[track_id].append((cx, cy))
                 
                     # Draw path
-                    for i in range(1, len(trajectories[track_id])):
-                        cv2.line(frame, (int(trajectories[track_id][i - 1][0]),int(trajectories[track_id][i - 1][1])), (int(trajectories[track_id][i][0]),int(trajectories[track_id][i][1])), (0, 255, 0), 2)
-                        
+                    points = trajectories[track_id]
+                    for p1, p2 in zip(points, points[1:]):
+                        cv2.line(frame, (int(p1[0]), int(p1[1])), (int(p2[0]), int(p2[1])), color, 1)
+
                 img = Image.fromarray(frame)
                 img_tk = ImageTk.PhotoImage(image=img)
                 
@@ -415,12 +451,64 @@ class VideoApp:
 
                 self.root.update_idletasks()
                 self.root.after(30)
+                
+                frame_id += 1
+                elapsed_time = frame_id / fps
+                self.time_label.config(text=f"Time: {elapsed_time:.2f} s")
 
             self.cap.release()
             self.replay_button.config(state=tk.NORMAL)
             self.status_label.config(text="Reproduction completed", fg="blue")
 
         threading.Thread(target=update, daemon=True).start()
+        
+    def view_results(self):
+        
+        df = pd.read_csv('./results/video_predicted/predictions/' + self.get_test_name() + '.csv')
+        
+        selected_option = self.class_options.get()
+        if selected_option == '2 classes':
+            class_names = ["Progressive", "Non-progressive"]
+            color = ['green', 'red']
+        elif  selected_option == '3 classes':
+            class_names = ["Progressive", "Non-progressive", "Inmotile"]
+            color = ['green', 'blue', 'red']
+        elif  selected_option == '4 classes':
+            class_names = ["Rapidly progressive", "Slowdly progressive", "Non-progressive", "Inmotile"]
+            color = ['green', 'blue', 'yellow', 'red']
+        
+        # Replace numeric values with class names
+        y_pred = df['label']
+        y_pred_mapped = [class_names[label] for label in y_pred]
+        counts = pd.Series(y_pred_mapped).value_counts().sort_index().tolist()
+        
+        graph_window = tk.Toplevel(self.root)
+        graph_window.title("Resultados - Gráficos")
+        
+        # Create a count plot with different colors per class
+        fig, ax = plt.subplots(figsize=(5, 4))
+
+        # Add the count labels on top of each bar
+        ax.bar(class_names, counts, color=color)
+
+        ax.set_title("Distribution of Sperm Motility Categories")
+        ax.set_xlabel("Categories")
+        ax.set_ylabel("Count")
+        
+        canvas = FigureCanvasTkAgg(fig, master=graph_window)
+        canvas.draw()
+        canvas.get_tk_widget().pack()
+
+        '''results_file = "output/results.csv"
+        if os.path.exists(results_file):
+            try:
+                # Para Windows
+                os.startfile(results_file)
+            except AttributeError:
+                # Para Linux/Mac
+                subprocess.call(["xdg-open", results_file])
+        else:
+            messagebox.showwarning("Archivo no encontrado", "No se encontró el archivo de resultados.")'''
 
     def upload_video(self):
         if not self.video_path:

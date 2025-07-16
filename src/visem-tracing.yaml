@@ -1,0 +1,7 @@
+train: C:\Users\Sergio\Desktop\TFM\DeepSpermMotility\datasets\VISEM-tracking-v2/train
+val: C:\Users\Sergio\Desktop\TFM\DeepSpermMotility\datasets\VISEM-tracking-v2/val
+
+names:
+  0: sperm
+  1: cluster
+  2: small or pinhead

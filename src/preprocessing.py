@@ -29,7 +29,7 @@ def deleted_null_values(df):
     # Calculate the number of rows dropped
     rows_dropped = initial_row_count - final_row_count
 
-    print(f'Number of rows dropped: {rows_dropped}')
+    #print(f'Number of rows dropped: {rows_dropped}')
     
     return df_cleaned
 

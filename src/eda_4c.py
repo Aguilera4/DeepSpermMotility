@@ -136,7 +136,7 @@ if __name__ == "__main__":
     print(df.describe())
     
     # Advanced information
-    draw_class_distribution(df)q
+    draw_class_distribution(df)
     #draw_correlation_matix(df)
     #draw_null_count(df)
     #draw_distribucion_columns(df)
