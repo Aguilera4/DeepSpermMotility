@@ -30,7 +30,7 @@ Features:
 - Beat Cross Frequency (BCF): Frequency of the sperm head crossing its average path.
   - Beat Cross Frequency (BCF) is a metric used in the analysis of sperm motility. It is defined as the frequency with which the curvilinear trajectory of a sperm crosses its average trajectory. It is measured in hertz (Hz), which indicates the number of crossings per second. In other words, BCF reflects the speed and regularity of the oscillatory movements of the sperm tail and is related to its ability to move efficiently in a liquid medium. It is an important parameter in fertility studies, since it can influence the ability of the sperm to reach and fertilize the egg.
 - Angular Displacement: Change in direction over time (useful for detecting circular motion).
-- Curvature: Measures how curved the trajectory is.
+# - Curvature: Measures how curved the trajectory is.
 
 Articulo: Multi-Target Tracking of Human Spermatozoa in Phase-Contrast Microscopy Image Sequences using a Hybrid Dynamic Bayesian Network
 Especifica que es necesario filtrar aquellos espermas que son visualizados en 25 frames consecutivos
@@ -39,31 +39,23 @@ Model Classify:
 - 2 classes: progressive and non-progressive
 - 4 classes: Linear mean swim, Circular swim, Hyperactivated, Inmotile
 
-
 Classify
- Page 24 of WHO document
+  Page 24 of WHO document
 
 Features
- Page 156 
+  Page 156 
 
+Probar tracking
+- 5 seg
+- 15 seg
+- 30 seg
 
+Mirar valores estándar para cada característica de la OMS
+Comprobar que el resto de videos son de personas con obesidad - Comprobado que provienen del mismo estudio
+Probar con las 5 mejores características
+Ajuste de parametros según videos
 
- Probar tracking
- 5 seg
- 15 seg
- 30 seg
-
-
- Mirar valores estándar para cada característica de la OMS
-
- comprobar que el resto de videos son de personas con obesidad - Comprobado que provienen del mismo estudio
-
- probar con las 5 mejores características
-
-
-
- Pruebas realizadas
-
+Pruebas realizadas
   - 2 clases
     - 20 videos
       - primeros 5 seg
@@ -245,11 +237,3 @@ Features
           Deep learning
             - Sin seleccion de caracteristicas
             - Con seleccion de características
-
-
-
-
-
-
-Ajuste de parametros según videos
-
