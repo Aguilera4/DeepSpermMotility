@@ -53,7 +53,7 @@ DeepSpermMotility is a project that analyzes sperm motility from videos using de
 ### Using the GUI
 1.  Run the application:
     ```bash
-    python src/app.py
+    python src/app/app.py
     ```
 2.  In the GUI, click **Select Video** to choose a video file.
 3.  Enter a **Test Name** for the output folder.
