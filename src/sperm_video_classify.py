@@ -389,9 +389,13 @@ def classify_video(video_path,name_video):
     
 
 if __name__ == "__main__":
-    # Path to video
-    video_path = '../data/VISEM_Tracking_extended/train/12/12.mp4'
-    
-    classify_video(video_path,'Prueba_clasificacion_12')
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Classify sperm motility from a video.")
+    parser.add_argument("video_path", help="Path to the input video file.")
+    parser.add_argument("test_name", help="Name of the test for output files.")
+    args = parser.parse_args()
+
+    classify_video(args.video_path, args.test_name)
     
     

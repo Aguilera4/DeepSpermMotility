@@ -51,29 +51,25 @@ DeepSpermMotility is a project that analyzes sperm motility from videos using de
 ## ▶️ How to Run
 
 ### Using the GUI
-1.  Ensure all dependencies and models are set up correctly.
-2.  Navigate to the project's root directory in your terminal.
-3.  Run the application using the following command:
+1.  Run the application:
     ```bash
     python src/app.py
     ```
-4.  In the GUI:
-    *   Click "Select Video" to choose the video file you want to analyze.
-    *   Enter a "Test Name" which will be used for naming the output folder.
-    *   Click "Start Process" to begin the analysis.
+2.  In the GUI, click **Select Video** to choose a video file.
+3.  Enter a **Test Name** for the output folder.
+4.  Click **Start Process** to begin the analysis.
+5.  Output files will be saved in a new folder inside the `results` directory, named with the test name you provided.
 
 ### Using the Command Line Interface (CLI)
-For more advanced users or batch processing, you can run the main processing script directly:
+For more advanced users or batch processing, you can run the main processing script directly from the command line.
+
 1.  Ensure all dependencies and models are set up correctly.
-2.  Open the `src/sperm_video_classify.py` script in a text editor.
-3.  Locate the `if __name__ == "__main__":` block at the end of the file.
-4.  Modify the `video_path` variable to the absolute or relative path of your input video.
-5.  Modify the `name_video` variable to a desired name for your test (this will influence output file naming).
-6.  Save the changes to the script.
-7.  Run the script from your terminal:
+2.  Run the script with the following command, providing the video path and a test name:
     ```bash
-    python src/sperm_video_classify.py
+    python src/sperm_video_classify.py "path/to/your/video.mp4" "your_test_name"
     ```
+    - Replace `"path/to/your/video.mp4"` with the actual path to your video file.
+    - Replace `"your_test_name"` with a name for your analysis, which will be used for the output files.
 
 ## 📄 Output
 The application generates the following output files, typically saved in a subdirectory within `results/` named after the `name_video` or test name provided:
