@@ -3,11 +3,13 @@
 
 <h3>Prediction process</h3>
 
-1. Predict bbox of video with yolov5 and establish the path of each sperm.
+1. Load sperm detection and tracking models.
+1. Predict the bboxes of the vidos with yolov5 and establish the trajectory of each sperm with SORT.
 2. Calculate the sperm centroid and the characteristics associated with each sperm.
-3. Classification of sperm as progressive or non-progressive.
-4. Preprocessing of the resulting information and training of the model.
-5. Validate the model using the metrics obtained.
+3. Classification of spermatozoa into 2, 3 or 4 classes.
+4. Preprocessing of the resulting information training of the model.
+5. Training of models for sperm movement prediction.
+6. Validate the model using the metrics obtained.
 
 ---------------
 

@@ -13,6 +13,7 @@ import sys
 import os
 import warnings
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from collections import defaultdict
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
@@ -30,7 +31,7 @@ class VideoApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Video Uploader")
-        self.root.geometry("700x500")
+        self.root.geometry("1000x500")
         
         # Frame container for the row
         self.top_controls_frame = tk.Frame(root)
@@ -48,6 +49,13 @@ class VideoApp:
         self.analysis_time_entry = tk.Entry(self.top_controls_frame, font=("Arial", 10), width=10)
         self.analysis_time_entry.insert(0, "30")
         self.analysis_time_entry.pack(side=tk.LEFT, padx=5)
+
+        # Entry for indicate the max trajectoy lenght to visualize
+        self.name_label = tk.Label(self.top_controls_frame, text="Maximum trajectory displayed:")
+        self.name_label.pack(side=tk.LEFT, padx=5)
+        self.max_trajectory_displayed = tk.Entry(self.top_controls_frame, font=("Arial", 10), width=10)
+        self.max_trajectory_displayed.insert(0, "50")
+        self.max_trajectory_displayed.pack(side=tk.LEFT, padx=5)
         
         # Select classes
         self.class_label = tk.Label(self.top_controls_frame, text="Classes:")
@@ -110,24 +118,25 @@ class VideoApp:
 
         # Initialize variables
         tracking_data = []
-        trajectories = {}
+        trajectories = defaultdict(list)
         frame_id = 0
 
         # Process the video frame by frame
         def process():
             nonlocal frame_id
             while cap.isOpened() and app.running:
+                # Get frame
                 ret, frame = cap.read()
                 
                 if not ret or frame_id > float(self.analysis_time_entry.get()) * 50:
                     break
 
-                results = model(frame)
+                results = model(frame) # Detections
                 bbox_data = results.pandas().xyxy[0]
                 detections = bbox_data[['xmin', 'ymin', 'xmax', 'ymax', 'confidence']].values
                 labels = bbox_data['class'].values
 
-                tracks = tracker.update(detections)
+                tracks = tracker.update(detections) # Updated the tracking algorithm
                 
                 for (xmin, ymin, xmax, ymax, track_id), label in zip(tracks, labels):
                     cx = (xmin + xmax) * 0.5
@@ -157,26 +166,31 @@ class VideoApp:
                 try:
                     predictions = pd.read_csv('./results/video_predicted/predictions/' + self.get_test_name() + '.csv')
                 except Exception as e:
-                    print("Lectura dataset:", e)
+                    print("Not enough data (predictions):", e)
                 
-                    
                 for (xmin, ymin, xmax, ymax, track_id), label in zip(tracks, labels):
                     cx = (xmin + xmax) * 0.5
                     cy = (ymin + ymax) * 0.5
                         
                     try:
-                        label = int(predictions[predictions['sperm_id'] == track_id]['label'])
-                        if label == 0:
-                            color = (0, 255, 0) # Green - Progressive/Progressive/Rapdly progressive
-                        elif label == 1:
-                            color = (255, 0, 0) # Blue - Non progressive/Non progressive/Slowly progressive
-                        elif label == 2:
-                            if self.class_options.get() == '3 classes':
-                                color =  (0, 0, 255)  # Red - -/-/Inmotile
-                            else:
-                                color = (0, 255, 255) # Yellow - -/Inmotile/Non progressive
-                        elif label == 3:
-                            color =  (0, 0, 255)  # Red - -/-/Inmotile
+                        label =  int(predictions[predictions['sperm_id'] == track_id]['label'])
+                        default_color = (128, 128, 128)  # Gris por defecto
+
+                        if self.class_options.get() == '3 classes':
+                            label_colors = {
+                                0: (0, 255, 0), # Progressive/Progressive/Rapdly progressive
+                                1: (255, 0, 0), # Non progressive/Non progressive/Slowly progressive
+                                2: (0, 0, 255), # -/-/Inmotile
+                                3: (0, 0, 255) # -/Inmotile/Non progressive
+                            }
+                        else:
+                            label_colors = {
+                                0: (0, 255, 0), # Progressive/Progressive/Rapdly progressive  
+                                1: (255, 0, 0), # Non progressive/Non progressive/Slowly progressive
+                                2: (0, 255, 255), # -/-/Inmotile
+                                3: (0, 0, 255) # -/Inmotile/Non progressive
+                            }
+                        color = label_colors.get(label, default_color)
                     except Exception as e:
                         color = (0, 0, 0)
                     
@@ -184,12 +198,12 @@ class VideoApp:
                     cv2.rectangle(frame, (int(xmin), int(ymin)), (int(xmax), int(ymax)), color, 1)
                     cv2.putText(frame, f'ID {int(track_id)}', (int(xmin), int(ymin)-10), cv2.FONT_HERSHEY_PLAIN, 1.2, (255, 255, 255), 1,  cv2.LINE_AA )
                     
-                    if track_id not in trajectories:
-                        trajectories[track_id] = []
+                    # Save point for trajectory
                     trajectories[track_id].append((cx, cy))
                     
                     # Draw path
-                    points = trajectories[track_id]
+                    max_trajectory_lenght = int(self.max_trajectory_displayed.get())
+                    points = trajectories[track_id][-max_trajectory_lenght:]
                     for p1, p2 in zip(points, points[1:]):
                         cv2.line(frame, (int(p1[0]), int(p1[1])), (int(p2[0]), int(p2[1])), color, 1)
                           
@@ -205,10 +219,9 @@ class VideoApp:
                 elapsed_time = frame_id / fps
                 self.time_label.config(text=f"Time: {elapsed_time:.2f} s")
                 root.update_idletasks()
-                time.sleep(1/fps)
 
             cap.release()
-            self.status_label.config(text="Tracking finalizado", fg="blue")
+            self.status_label.config(text="Tracking completed", fg="blue")
 
             # Save CSV
             df = pd.DataFrame(tracking_data, columns=['frame_id', 'track_id', 'class', 'cx', 'cy', 'xmin', 'ymin', 'xmax', 'ymax'])
@@ -255,6 +268,8 @@ class VideoApp:
         # Save the updated DataFrame with velocity data
         df.to_csv('./results/video_predicted/centroid_velocity/centroid_velocity_' + self.get_test_name() + '.csv', index=False)
     
+    
+    
     def calculate_features(self):
         # Load the tracking data from a CSV file
         df = pd.read_csv('./results/video_predicted/tracking/tracking_' + self.get_test_name() + '.csv')
@@ -293,6 +308,8 @@ class VideoApp:
         # Save the DataFrame
         data.to_csv('./results/video_predicted/features/features_' + self.get_test_name() + '.csv', index=False)
     
+    
+    
     def preprocessing_data(self):
         # Load the tracking data from a CSV file
         df = pd.read_csv('./results/video_predicted/features/features_' + self.get_test_name() + '.csv')
@@ -306,7 +323,9 @@ class VideoApp:
         
         # Save the updated DataFrame with velocity data
         df.to_csv('./results/video_predicted/preprocessing/' + self.get_test_name() + '_preprocessing.csv', index=False)
-        
+
+
+
     def classify_data(self):
         
         # Load data
@@ -332,8 +351,10 @@ class VideoApp:
         df2['label'] = y_pred
         df2.to_csv('./results/video_predicted/predictions/' + self.get_test_name() + '.csv', index=False)
 
+
+
     def select_video(self):
-        """ Permite seleccionar un video """
+        """ Allows you to select a video """
         self.video_path = filedialog.askopenfilename(filetypes=[("Video Files", "*.mp4;*.avi;*.mov;*.mkv")])
         
         if self.video_path:
@@ -347,9 +368,13 @@ class VideoApp:
             self.start_button.config(state=tk.NORMAL)
             self.replay_button.config(state=tk.DISABLED)
 
+
+
     def get_test_name(self):
         """ Gets the name entered in the text box """
         return self.name_entry.get().strip()
+
+
             
     def start_process(self):
         """ Starts video playback """
@@ -372,10 +397,14 @@ class VideoApp:
         self.status_label.config(text=f"Replaying: {name_test}", fg="green")
         self.replay_button.config(state=tk.NORMAL)
         
+        
+        
     def stop_process(self):
         self.running = False
         self.status_label.config(text="Manually stopped process", fg="red")
         self.stop_button.config(state=tk.DISABLED)
+
+
 
     def play_video(self):
         if not self.video_path:
@@ -384,7 +413,8 @@ class VideoApp:
         # Load the tracking data with velocity
         df_predictions = pd.read_csv('./results/video_predicted/predictions/' + self.get_test_name() + '.csv')
         df_tracks = pd.read_csv('./results/video_predicted/tracking/tracking_' + self.get_test_name() + '.csv')
-        trajectories = {}
+        
+        trajectories = defaultdict(list)
         
         self.cap = cv2.VideoCapture(self.video_path)
         self.replay_button.config(state=tk.DISABLED)
@@ -396,34 +426,39 @@ class VideoApp:
             # Process the video frame by frame
             frame_id = 0
             while self.running and self.cap.isOpened():
+                # Get frame
                 ret, frame = self.cap.read()
+                
                 if not ret or frame_id >= max_frames:
                     break
                 
                 # Get the data for the current frame
                 frame_data = df_tracks[df_tracks['frame_id'] == frame_id]
-                
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                frame = cv2.resize(frame, (500, 300))
 
                 # Draw velocity vectors on the frame
                 for _, row in frame_data.iterrows():
                     cx, cy = int(row['cx']), int(row['cy'])
                     xmin, ymin, xmax, ymax = int(row['xmin']), int(row['ymin']), int(row['xmax']), int(row['ymax'])
-                    
+                        
                     try:
                         label = int(df_predictions[df_predictions['sperm_id'] == track_id]['label'])
-                        if label == 0:
-                            color = (0, 255, 0) # Green - Progressive/Progressive/Rapdly progressive
-                        elif label == 1:
-                            color = (255, 0, 0) # Blue - Non progressive/Non progressive/Slowly progressive
-                        elif label == 2:
-                            if self.class_options.get() == '3 classes':
-                                color =  (0, 0, 255)  # Red - -/-/Inmotile
-                            else:
-                                color = (0, 255, 255) # Yellow - -/Inmotile/Non progressive
-                        elif label == 3:
-                            color =  (0, 0, 255)  # Red - -/-/Inmotile
+                        default_color = (128, 128, 128)  # Gris por defecto
+
+                        if self.class_options.get() == '3 classes':
+                            label_colors = {
+                                0: (0, 255, 0), # Progressive/Progressive/Rapdly progressive
+                                1: (255, 0, 0), # Non progressive/Non progressive/Slowly progressive
+                                2: (0, 0, 255), # -/-/Inmotile
+                                3: (0, 0, 255) # -/Inmotile/Non progressive
+                            }
+                        else:
+                            label_colors = {
+                                0: (0, 255, 0), # Progressive/Progressive/Rapdly progressive  
+                                1: (255, 0, 0), # Non progressive/Non progressive/Slowly progressive
+                                2: (0, 255, 255), # -/-/Inmotile
+                                3: (0, 0, 255) # -/Inmotile/Non progressive
+                            }
+                        color = label_colors.get(label, default_color)
                     except Exception as e:
                         color = (0, 0, 0)
                     
@@ -433,9 +468,7 @@ class VideoApp:
                     cv2.rectangle(frame, (int(xmin), int(ymin)), (int(xmax), int(ymax)), color, 1)
                     cv2.putText(frame, f'ID {int(track_id)}', (int(xmin), int(ymin)-10), cv2.FONT_HERSHEY_PLAIN, 1.2, (255, 255, 255), 1,  cv2.LINE_AA )
                     
-                    
-                    if track_id not in trajectories:
-                        trajectories[track_id] = []
+                    # Save point for trajectory
                     trajectories[track_id].append((cx, cy))
                 
                     # Draw path
@@ -443,18 +476,18 @@ class VideoApp:
                     for p1, p2 in zip(points, points[1:]):
                         cv2.line(frame, (int(p1[0]), int(p1[1])), (int(p2[0]), int(p2[1])), color, 1)
 
-                img = Image.fromarray(frame)
-                img_tk = ImageTk.PhotoImage(image=img)
-                
-                self.canvas.create_image(0, 0, anchor=tk.NW, image=img_tk)
-                self.canvas.image = img_tk
+                # Show canvas
+                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                rgb_frame = cv2.resize(rgb_frame, (500, 300))
+                img = ImageTk.PhotoImage(Image.fromarray(rgb_frame))
 
-                self.root.update_idletasks()
-                self.root.after(30)
-                
+                self.canvas.create_image(0, 0, anchor=tk.NW, image=img)
+                self.canvas.image = img
+
                 frame_id += 1
                 elapsed_time = frame_id / fps
                 self.time_label.config(text=f"Time: {elapsed_time:.2f} s")
+                root.update_idletasks()
 
             self.cap.release()
             self.replay_button.config(state=tk.NORMAL)
@@ -528,6 +561,8 @@ class VideoApp:
                 self.status_label.config(text="Error in upload", fg="red")
 
         threading.Thread(target=upload, daemon=True).start()
+
+
 
 # Running the application
 root = tk.Tk()
