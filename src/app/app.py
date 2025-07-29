@@ -78,7 +78,7 @@ class VideoApp:
         self.start_button.pack(side=tk.LEFT, padx=5)
 
         # Button to play again
-        self.replay_button = tk.Button(self.button_frame, text="Play again", command=self.play_video, state=tk.DISABLED)
+        self.replay_button = tk.Button(self.button_frame, text="Play again", command=self.replay_video, state=tk.DISABLED)
         self.replay_button.pack(side=tk.LEFT, padx=5)
         
         # Button to stop
@@ -406,7 +406,7 @@ class VideoApp:
 
 
 
-    def play_video(self):
+    def replay_video(self):
         if not self.video_path:
             return
         
@@ -439,6 +439,8 @@ class VideoApp:
                 for _, row in frame_data.iterrows():
                     cx, cy = int(row['cx']), int(row['cy'])
                     xmin, ymin, xmax, ymax = int(row['xmin']), int(row['ymin']), int(row['xmax']), int(row['ymax'])
+                    
+                    track_id = row['track_id']
                         
                     try:
                         label = int(df_predictions[df_predictions['sperm_id'] == track_id]['label'])
@@ -449,7 +451,6 @@ class VideoApp:
                                 0: (0, 255, 0), # Progressive/Progressive/Rapdly progressive
                                 1: (255, 0, 0), # Non progressive/Non progressive/Slowly progressive
                                 2: (0, 0, 255), # -/-/Inmotile
-                                3: (0, 0, 255) # -/Inmotile/Non progressive
                             }
                         else:
                             label_colors = {
@@ -460,9 +461,8 @@ class VideoApp:
                             }
                         color = label_colors.get(label, default_color)
                     except Exception as e:
+                        print("Error:",e)
                         color = (0, 0, 0)
-                    
-                    track_id = row['track_id']
                     
                     # Draw bbox
                     cv2.rectangle(frame, (int(xmin), int(ymin)), (int(xmax), int(ymax)), color, 1)
@@ -531,17 +531,57 @@ class VideoApp:
         canvas = FigureCanvasTkAgg(fig, master=graph_window)
         canvas.draw()
         canvas.get_tk_widget().pack()
+        
+        self.root.wait_window(graph_window)
+        
+        features = [
+            "total_distance", "displacement", "time_elapsed",
+            "vcl", "vsl", "vap",
+            "alh", "mad", "lin",
+            "wob", "str", "bcf"
+        ]
 
-        '''results_file = "output/results.csv"
-        if os.path.exists(results_file):
-            try:
-                # Para Windows
-                os.startfile(results_file)
-            except AttributeError:
-                # Para Linux/Mac
-                subprocess.call(["xdg-open", results_file])
-        else:
-            messagebox.showwarning("Archivo no encontrado", "No se encontró el archivo de resultados.")'''
+        # Mapear etiquetas numéricas a nombres (opcional)
+        df['class'] = [class_names[label] for label in df['label']]
+        grouped_stats = df.groupby('class')[features].agg(['mean', 'min', 'max', 'std']).round(2)
+
+        # Crear ventana
+        stat_window = tk.Toplevel(self.root)
+        stat_window.title("Estadísticas por Característica")
+
+        # Dropdown para seleccionar la característica
+        selected_feature = tk.StringVar()
+        selected_feature.set(features[0])  # valor por defecto
+
+        dropdown = ttk.Combobox(stat_window, textvariable=selected_feature, values=features, state="readonly")
+        dropdown.pack(pady=10)
+
+        # Tabla
+        tree = ttk.Treeview(stat_window)
+        tree["columns"] = ['Clase', 'Media', 'Mínimo', 'Máximo', 'Desv. Est.']
+        tree["show"] = "headings"
+
+        for col in tree["columns"]:
+            tree.heading(col, text=col)
+            tree.column(col, anchor='center', width=100)
+
+        tree.pack(expand=True, fill='both')
+
+        # Función para actualizar tabla
+        def update_table(*args):
+            feature = selected_feature.get()
+            tree.delete(*tree.get_children())  # Limpiar tabla
+            
+            for clase in grouped_stats.index:
+                stats = grouped_stats.loc[clase, feature]
+                row = [clase, stats['mean'], stats['min'], stats['max'], stats['std']]
+                tree.insert("", "end", values=row)
+
+        # Enlazar evento de selección
+        dropdown.bind("<<ComboboxSelected>>", update_table)
+
+        # Mostrar primera vez
+        update_table()
 
     def upload_video(self):
         if not self.video_path:
@@ -561,8 +601,6 @@ class VideoApp:
                 self.status_label.config(text="Error in upload", fg="red")
 
         threading.Thread(target=upload, daemon=True).start()
-
-
 
 # Running the application
 root = tk.Tk()
