@@ -137,8 +137,8 @@ if __name__ == "__main__":
     
     # Advanced information
     draw_class_distribution(df)
-    #draw_correlation_matix(df)
-    #draw_null_count(df)
-    #draw_distribucion_columns(df)
-    #show_outliers(df)
+    draw_correlation_matix(df)
+    draw_null_count(df)
+    draw_distribucion_columns(df)
+    show_outliers(df)
     get_more_important_features(df)

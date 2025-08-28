@@ -122,17 +122,17 @@ def plot_learning_curve_RF(clf,X,y):
     test_scores_std   = np.std(test_scores, axis=1)
     
     plt.figure(figsize=(10, 6))
-    plt.title("Curva de aprendizaje - Random Forest")
-    plt.xlabel("Tamaño del conjunto de entrenamiento")
-    plt.ylabel("Exactitud (Accuracy)")
+    plt.title("Learning curve - Random Forest")
+    plt.xlabel("Training set size")
+    plt.ylabel("Accuracy")
 
     plt.grid()
     plt.fill_between(train_sizes, train_scores_mean - train_scores_std,
                     train_scores_mean + train_scores_std, alpha=0.1, color="r")
     plt.fill_between(train_sizes, test_scores_mean - test_scores_std,
                     test_scores_mean + test_scores_std, alpha=0.1, color="g")
-    plt.plot(train_sizes, train_scores_mean, 'o-', color="r", label="Entrenamiento")
-    plt.plot(train_sizes, test_scores_mean, 'o-', color="g", label="Validación")
+    plt.plot(train_sizes, train_scores_mean, 'o-', color="r", label="Training")
+    plt.plot(train_sizes, test_scores_mean, 'o-', color="g", label="Test")
 
     plt.legend(loc="best")
     plt.tight_layout()
@@ -182,7 +182,7 @@ def draw_roc_auc_curve(y_test,y_pred_prob):
         plt.plot(fpr[i], tpr[i], color=colors[i],
                 label=f'Class {i} (AUC = {roc_auc[i]:.2f})')
 
-    plt.plot([0, 1], [0, 1], 'k--')  # diagonal line
+    plt.plot([0, 1], [0, 1], 'k--')
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
     plt.title('Multiclass ROC Curve (OvR)')
@@ -312,7 +312,7 @@ def tabPFN(X_train, X_test, y_train, y_test):
     # Initialize a classifier
     clf_base =  TabPFNClassifier(
         ignore_pretraining_limits=True,
-        inference_config = {"SUBSAMPLE_SAMPLES": 1000} # Needs to be set low so that not OOM on fitting intermediate nodes
+        inference_config = {"SUBSAMPLE_SAMPLES": 1000}
     )
     
     tabpfn_tree_clf = RandomForestTabPFNClassifier(
@@ -327,7 +327,9 @@ def tabPFN(X_train, X_test, y_train, y_test):
     tabpfn_tree_clf.fit(X_train, y_train)
 
     # Predict labels
-    y_pred = tabpfn_tree_clf.predict(X_test)    # Show metrics
+    y_pred = tabpfn_tree_clf.predict(X_test)    
+    
+    # Show metrics
     show_metrics(y_test,y_pred)
     draw_confusion_matrix(y_test,y_pred,'Confusion matrix (TabPFN)')
     

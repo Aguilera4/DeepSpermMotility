@@ -151,17 +151,17 @@ def plot_learning_curve_RF(clf,X,y):
     test_scores_std   = np.std(test_scores, axis=1)
     
     plt.figure(figsize=(10, 6))
-    plt.title("Curva de aprendizaje - Random Forest")
-    plt.xlabel("Tamaño del conjunto de entrenamiento")
-    plt.ylabel("Exactitud (Accuracy)")
+    plt.title("Learning curve - Random Forest")
+    plt.xlabel("Training set size")
+    plt.ylabel("Accuracy")
 
     plt.grid()
     plt.fill_between(train_sizes, train_scores_mean - train_scores_std,
                     train_scores_mean + train_scores_std, alpha=0.1, color="r")
     plt.fill_between(train_sizes, test_scores_mean - test_scores_std,
                     test_scores_mean + test_scores_std, alpha=0.1, color="g")
-    plt.plot(train_sizes, train_scores_mean, 'o-', color="r", label="Entrenamiento")
-    plt.plot(train_sizes, test_scores_mean, 'o-', color="g", label="Validación")
+    plt.plot(train_sizes, train_scores_mean, 'o-', color="r", label="Training")
+    plt.plot(train_sizes, test_scores_mean, 'o-', color="g", label="Test")
 
     plt.legend(loc="best")
     plt.tight_layout()
@@ -308,7 +308,9 @@ def tabPFN(X_train, X_test, y_train, y_test):
     tabpfn_tree_clf.fit(X_train, y_train)
 
     # Predict labels
-    y_pred = tabpfn_tree_clf.predict(X_test)    # Show metrics
+    y_pred = tabpfn_tree_clf.predict(X_test) 
+    
+    # Show metrics
     show_metrics(y_test,y_pred)
     draw_confusion_matrix(y_test,y_pred,'Confusion matrix (TabPFN)')
     
@@ -391,7 +393,7 @@ if __name__ == "__main__":
     print(pd.Series(y_test).value_counts())
     
     print("\n*** Random Forest ***")
-    #random_forest(X_train, X_test, y_train, y_test)
+    random_forest(X_train, X_test, y_train, y_test)
     
     print("\n*** Logistic regression ***")
     logistic_regression(X_train, X_test, y_train, y_test)

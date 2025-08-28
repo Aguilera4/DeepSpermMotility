@@ -16,7 +16,7 @@ def data_labelling(df,type_classification,name_file):
         name_file: name of the output file to save the results
     
     Returns:
-        None
+        dataframe with labels
     """
     
     classification_classes = None

@@ -40,23 +40,24 @@ print(cluster_stats)
 '''sns.pairplot(df_copy, hue='label', diag_kind='kde')
 plt.show()'''
 
-# Entrenamiento de un árbol de decisión para extraer reglas
+# Training a decision tree to extract rules
 features = ['displacement','vcl','vsl','lin']
 X = df_copy[features]
 y = df_copy['label']
 
 tree = DecisionTreeClassifier(
-    criterion='gini',             # Gini impurity
-    max_depth=2,                  # Limit tree depth
-    min_samples_split=10,         # Minimum samples to split a node
-    min_samples_leaf=5,           # Minimum samples at a leaf node
-    max_features='sqrt',          # Use square root of features for splits
-    random_state=42,              # Ensure reproducibility
-    class_weight='balanced'       # Handle class imbalance (if any)
+    criterion='gini',
+    max_depth=2,
+    min_samples_split=10,
+    min_samples_leaf=5,
+    max_features='sqrt',
+    random_state=42,
+    class_weight='balanced'
     )
+
 tree.fit(X, y)
 
-# Mostrar reglas extraídas
+# Show extracted rules
 rules = export_text(tree, feature_names=features)
 print("Reglas de clasificación extraídas del árbol de decisión:")
 print(rules)

@@ -8,7 +8,7 @@ def classification_2_classes(sperm):
         sperm: features of sperm
     
     Returns:
-        bool: True if progressive, False if non-progressive.
+        int: 0 -> Progressive, 1 -> Non-pogressive
     """
     vcl = sperm['vcl']
     vsl = sperm['vsl']

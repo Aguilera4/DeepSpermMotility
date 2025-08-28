@@ -67,6 +67,6 @@ if __name__ == "__main__":
     df = pd.read_csv('../results/data_features_labelling_preprocessing/dataset_30s_2c.csv')
     
     draw_class_distribution(df)
-    #draw_correlation_matix(df)
-    #draw_distribucion_columns(df)
-    #show_outliers(df)
+    draw_correlation_matix(df)
+    draw_distribucion_columns(df)
+    show_outliers(df)
